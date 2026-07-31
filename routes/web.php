@@ -14,24 +14,32 @@ Route::middleware('guest')->get('/', function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
-    Route::get('arpu-subscriptions', [\App\Http\Controllers\ArpuSubscriptionController::class, 'index'])->name('arpu_subscriptions.index');
+    Route::get('arpu-subscriptions', [\App\Http\Controllers\ArpuSubscriptionController::class, 'index'])->name('arpu_subscriptions.index')->middleware('permission:arpu.view');
 
-    Route::get('api-tokens', [\App\Http\Controllers\ApiTokenController::class, 'index'])->name('api_tokens.index');
-    Route::post('api-tokens', [\App\Http\Controllers\ApiTokenController::class, 'store'])->name('api_tokens.store');
-    Route::put('api-tokens/{apiToken}', [\App\Http\Controllers\ApiTokenController::class, 'update'])->name('api_tokens.update');
+    Route::middleware('permission:tokens.view')->group(function () {
+        Route::get('api-tokens', [\App\Http\Controllers\ApiTokenController::class, 'index'])->name('api_tokens.index');
+        Route::post('api-tokens', [\App\Http\Controllers\ApiTokenController::class, 'store'])->name('api_tokens.store');
+        Route::put('api-tokens/{apiToken}', [\App\Http\Controllers\ApiTokenController::class, 'update'])->name('api_tokens.update');
+    });
 
-    Route::get('endpoint-configs', [\App\Http\Controllers\EndpointConfigController::class, 'index'])->name('endpoint_configs.index');
-    Route::post('endpoint-configs', [\App\Http\Controllers\EndpointConfigController::class, 'store'])->name('endpoint_configs.store');
-    Route::put('endpoint-configs/{endpointConfig}', [\App\Http\Controllers\EndpointConfigController::class, 'update'])->name('endpoint_configs.update');
-    Route::delete('endpoint-configs/{endpointConfig}', [\App\Http\Controllers\EndpointConfigController::class, 'destroy'])->name('endpoint_configs.destroy');
-    Route::post('endpoint-configs/{endpointConfig}/push', [\App\Http\Controllers\EndpointConfigController::class, 'push'])->name('endpoint_configs.push');
+    Route::middleware('permission:endpoints.view')->group(function () {
+        Route::get('endpoint-configs', [\App\Http\Controllers\EndpointConfigController::class, 'index'])->name('endpoint_configs.index');
+        Route::post('endpoint-configs', [\App\Http\Controllers\EndpointConfigController::class, 'store'])->name('endpoint_configs.store');
+        Route::put('endpoint-configs/{endpointConfig}', [\App\Http\Controllers\EndpointConfigController::class, 'update'])->name('endpoint_configs.update');
+        Route::delete('endpoint-configs/{endpointConfig}', [\App\Http\Controllers\EndpointConfigController::class, 'destroy'])->name('endpoint_configs.destroy');
+        Route::post('endpoint-configs/{endpointConfig}/push', [\App\Http\Controllers\EndpointConfigController::class, 'push'])->name('endpoint_configs.push');
+    });
 
-    Route::get('daily-push', [\App\Http\Controllers\DailyPushController::class, 'index'])->name('daily_push.index');
-    Route::post('daily-push', [\App\Http\Controllers\DailyPushController::class, 'store'])->name('daily_push.store');
-    Route::put('daily-push/{dailyPush}', [\App\Http\Controllers\DailyPushController::class, 'update'])->name('daily_push.update');
-    Route::post('daily-push/push-all', [\App\Http\Controllers\DailyPushController::class, 'pushAll'])->name('daily_push.pushAll');
-    Route::delete('daily-push/{dailyPush}', [\App\Http\Controllers\DailyPushController::class, 'destroy'])->name('daily_push.destroy');
-    Route::post('daily-push/{dailyPush}/push', [\App\Http\Controllers\DailyPushController::class, 'push'])->name('daily_push.push');
+    Route::middleware('permission:dailypush.view')->group(function () {
+        Route::get('daily-push', [\App\Http\Controllers\DailyPushController::class, 'index'])->name('daily_push.index');
+        Route::post('daily-push', [\App\Http\Controllers\DailyPushController::class, 'store'])->name('daily_push.store');
+        Route::put('daily-push/{dailyPush}', [\App\Http\Controllers\DailyPushController::class, 'update'])->name('daily_push.update');
+        Route::post('daily-push/push-all', [\App\Http\Controllers\DailyPushController::class, 'pushAll'])->name('daily_push.pushAll');
+        Route::delete('daily-push/{dailyPush}', [\App\Http\Controllers\DailyPushController::class, 'destroy'])->name('daily_push.destroy');
+        Route::post('daily-push/{dailyPush}/push', [\App\Http\Controllers\DailyPushController::class, 'push'])->name('daily_push.push');
+    });
+
+    Route::resource('request-service', \App\Http\Controllers\RequestServiceController::class)->middleware('permission:requests.view');
 
     Route::get('data-pemohon', function () {
         return Inertia::render('data-pemohon', [
@@ -98,8 +106,8 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('unit-hunian/{unitHunian}', [\App\Http\Controllers\UnitHunianController::class, 'destroy'])->name('unit-hunian.destroy');
 
     // User & Role Management
-    Route::resource('users', UserController::class)->except(['create', 'show', 'edit']);
-    Route::resource('roles', RoleController::class)->except(['create', 'show', 'edit']);
+    Route::resource('users', UserController::class)->except(['create', 'show', 'edit'])->middleware('permission:users.view');
+    Route::resource('roles', RoleController::class)->except(['create', 'show', 'edit'])->middleware('permission:roles.view');
 
     Route::get('tokens', function () {
         return Inertia::render('tokens', [

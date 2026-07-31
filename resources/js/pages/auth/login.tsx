@@ -7,7 +7,6 @@ export default function Login({ status, canResetPassword }: { status?: string, c
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
-        role: 'administrator',
         remember: false as boolean,
     });
 
@@ -77,27 +76,6 @@ export default function Login({ status, canResetPassword }: { status?: string, c
                     {status && <div className="mb-4 font-medium text-sm text-green-600 text-center">{status}</div>}
 
                     <form className="flex flex-col gap-5" onSubmit={submit}>
-                        {/* Role Selection */}
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-slate-700 text-sm font-bold">Pilih Role Akses</label>
-                            <div className="flex p-1 bg-slate-100/80 rounded-xl shadow-inner border border-slate-200/50">
-                                {['administrator', 'verifikator', 'pimpinan'].map((role) => (
-                                    <button
-                                        key={role}
-                                        type="button"
-                                        onClick={() => setData('role', role)}
-                                        className={`flex-1 py-2.5 text-xs font-bold rounded-lg capitalize transition-all duration-300 ${
-                                            data.role === role 
-                                                ? 'bg-white text-[#1a56db] shadow-sm ring-1 ring-black/5' 
-                                                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
-                                        }`}
-                                    >
-                                        {role}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
                         {/* Email Input */}
                         <div className="flex flex-col gap-1.5 mt-2">
                             <label className="text-slate-700 text-sm font-bold">Email atau Username</label>
@@ -143,7 +121,7 @@ export default function Login({ status, canResetPassword }: { status?: string, c
                             <InputError message={errors.password} className="mt-1" />
                         </div>
 
-                        {/* Remember & Forgot Password */}
+                        {/* Remember */}
                         <div className="flex items-center justify-between mt-2">
                             <label className="flex items-center gap-2 cursor-pointer group">
                                 <input 
@@ -154,15 +132,6 @@ export default function Login({ status, canResetPassword }: { status?: string, c
                                 />
                                 <span className="text-sm text-slate-600 group-hover:text-slate-800 transition-colors">Ingat saya</span>
                             </label>
-                            
-                            {canResetPassword && (
-                                <Link 
-                                    href={route('password.request')} 
-                                    className="text-sm font-semibold text-[#1a56db] hover:text-blue-800 transition-colors"
-                                >
-                                    Lupa password?
-                                </Link>
-                            )}
                         </div>
 
                         {/* Submit Button */}
@@ -182,34 +151,6 @@ export default function Login({ status, canResetPassword }: { status?: string, c
                         </button>
                     </form>
 
-                    {/* Divider */}
-                    <div className="relative flex items-center justify-center mt-8 mb-6">
-                        <div className="absolute w-full border-t border-slate-200"></div>
-                        <span className="relative bg-white px-4 text-xs font-medium text-slate-400">
-                            atau masuk dengan
-                        </span>
-                    </div>
-
-                    {/* Google Login Button */}
-                    <button
-                        type="button"
-                        className="w-full bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 py-3.5 px-6 rounded-xl text-sm font-bold flex items-center justify-center gap-3 transition-all duration-200 shadow-sm"
-                    >
-                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M22.56 12.25C22.56 11.47 22.49 10.72 22.36 10H12V14.26H17.92C17.66 15.63 16.88 16.8 15.71 17.58V20.34H19.28C21.36 18.42 22.56 15.6 22.56 12.25Z" fill="#4285F4"/>
-                            <path d="M12 23C14.97 23 17.46 22.02 19.28 20.34L15.71 17.58C14.72 18.24 13.47 18.64 12 18.64C9.15 18.64 6.74 16.71 5.88 14.13H2.19V16.99C4.01 20.61 7.7 23 12 23Z" fill="#34A853"/>
-                            <path d="M5.88 14.13C5.66 13.47 5.54 12.75 5.54 12C5.54 11.25 5.66 10.53 5.88 9.87V7.01H2.19C1.43 8.52 1 10.21 1 12C1 13.79 1.43 15.48 2.19 16.99L5.88 14.13Z" fill="#FBBC05"/>
-                            <path d="M12 5.36C13.62 5.36 15.07 5.92 16.21 7.01L19.36 3.86C17.45 2.07 14.97 1 12 1C7.7 1 4.01 3.39 2.19 7.01L5.88 9.87C6.74 7.29 9.15 5.36 12 5.36Z" fill="#EA4335"/>
-                        </svg>
-                        Masuk dengan Google
-                    </button>
-
-                    {/* Footer Link */}
-                    <div className="mt-8 text-center">
-                        <p className="text-sm text-slate-500">
-                            Belum punya akun? <a href="#" className="font-semibold text-[#1a56db] hover:underline">Hubungi Administrator</a>
-                        </p>
-                    </div>
                 </div>
 
             </div>

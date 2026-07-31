@@ -1,12 +1,19 @@
 import { Link, usePage } from '@inertiajs/react';
 import { 
     Search, Bell, Mail, Menu, Home, CheckSquare, Briefcase, FileText, 
-    PieChart, Monitor, Database, Settings, Users, Shield, ArrowDown, BarChart2, Clock
+    PieChart, Monitor, Database, Settings, Users, Shield, ArrowDown, BarChart2, Clock, Key, LogOut
 } from 'lucide-react';
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-    const { url } = usePage();
+    const { url, props } = usePage();
+    const { auth } = props as any;
+    const [showUserMenu, setShowUserMenu] = useState(false);
+
+    const hasPermission = (permission: string) => {
+        if (auth?.user?.role === 'Admin Utama') return true;
+        return auth?.permissions?.includes(permission);
+    };
 
     return (
         <div className="flex h-screen bg-[#f8fafc] font-sans overflow-hidden">
@@ -33,10 +40,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     <div className="mt-8 mb-4">
                         <h3 className="text-xs font-bold text-slate-400 tracking-wider mb-3 px-2">MENU UTAMA</h3>
                         <div className="flex flex-col gap-1">
-                            <NavItem icon={<Database size={18} />} text="ARPU Subscriptions" href="/arpu-subscriptions" />
-                            <NavItem icon={<Shield size={18} />} text="API Tokens" href="/api-tokens" />
-                            <NavItem icon={<Settings size={18} />} text="Endpoint Configs" href="/endpoint-configs" />
-                            <NavItem icon={<Clock size={18} />} text="Daily Push (H-1)" href="/daily-push" />
+                            {hasPermission('arpu.view') && (
+                                <NavItem icon={<Database size={18} />} text="ARPU Subscriptions" href="/arpu-subscriptions" />
+                            )}
+                            {hasPermission('tokens.view') && (
+                                <NavItem icon={<Shield size={18} />} text="API Tokens" href="/api-tokens" />
+                            )}
+                            {hasPermission('endpoints.view') && (
+                                <NavItem icon={<Settings size={18} />} text="Endpoint Configs" href="/endpoint-configs" />
+                            )}
+                            {hasPermission('dailypush.view') && (
+                                <NavItem icon={<Clock size={18} />} text="Daily Push (H-1)" href="/daily-push" />
+                            )}
+                            {hasPermission('requests.view') && (
+                                <NavItem icon={<FileText size={18} />} text="Request Service" href="/request-service" />
+                            )}
+                            {hasPermission('users.view') && (
+                                <NavItem icon={<Users size={18} />} text="User Management" href="/users" />
+                            )}
+                            {hasPermission('roles.view') && (
+                                <NavItem icon={<Key size={18} />} text="Role Management" href="/roles" />
+                            )}
                         </div>
                     </div>
                 </div>
@@ -93,12 +117,41 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                         <div className="h-8 w-px bg-slate-200"></div>
 
-                        <div className="flex items-center gap-3 cursor-pointer group">
-                            <img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" alt="User" className="w-10 h-10 rounded-full ring-2 ring-white shadow-sm object-cover" />
-                            <div className="hidden sm:block">
-                                <p className="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">Admin Utama</p>
-                                <p className="text-xs text-slate-500">Administrator</p>
+                        <div className="relative">
+                            <div 
+                                className="flex items-center gap-3 cursor-pointer group"
+                                onClick={() => setShowUserMenu(!showUserMenu)}
+                            >
+                                <img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" alt="User" className="w-10 h-10 rounded-full ring-2 ring-white shadow-sm object-cover" />
+                                <div className="hidden sm:block">
+                                    <p className="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">{auth?.user?.name || 'Admin Utama'}</p>
+                                    <p className="text-xs text-slate-500">{auth?.user?.role || 'Administrator'}</p>
+                                </div>
                             </div>
+                            
+                            {showUserMenu && (
+                                <>
+                                    <div 
+                                        className="fixed inset-0 z-40"
+                                        onClick={() => setShowUserMenu(false)}
+                                    ></div>
+                                    <div className="absolute right-0 mt-3 w-48 bg-white rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.1)] border border-slate-100 py-2 z-50">
+                                        <div className="px-4 py-3 border-b border-slate-100 mb-1">
+                                            <p className="text-sm font-bold text-slate-800">{auth?.user?.name || 'Admin Utama'}</p>
+                                            <p className="text-xs text-slate-500 truncate">{auth?.user?.email || 'admin@example.com'}</p>
+                                        </div>
+                                        <Link 
+                                            href="/logout" 
+                                            method="post" 
+                                            as="button"
+                                            className="w-full text-left px-4 py-2.5 text-sm text-red-600 font-semibold hover:bg-red-50 transition-colors flex items-center gap-2"
+                                        >
+                                            <LogOut size={16} />
+                                            Sign Out
+                                        </Link>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </header>

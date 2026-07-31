@@ -38,12 +38,25 @@ class HandleInertiaRequests extends Middleware
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
+        $user = $request->user();
+        $permissions = [];
+        
+        if ($user && $user->role) {
+            $role = \App\Models\Role::where('name', $user->role)->first();
+            if ($role && $role->permissions) {
+                $permissions = $role->permissions;
+            }
+            // If the user's role is 'Admin Utama' or 'Admin' give them everything optionally? 
+            // The prompt says "di kasih di role akses login", so we rely strictly on the role's JSON permissions array.
+        }
+
         return array_merge(parent::share($request), [
             ...parent::share($request),
             'name' => config('app.name'),
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
+                'permissions' => $permissions,
             ],
         ]);
     }
