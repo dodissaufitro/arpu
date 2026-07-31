@@ -1,0 +1,106 @@
+[
+    {
+        "msisdn": "84703882414",
+        "id_operator": "29",
+        "id_service": "4521",
+        "status_api": "1",
+        "renewal_date": "2026-07-28 09:15:46",
+        "unsubs_date": "9999-01-01 00:00:00"
+    },
+    {
+        "msisdn": "84706384426",
+        "id_operator": "29",
+        "id_service": "4521",
+        "status_api": "1",
+        "renewal_date": "2026-07-28 07:58:57",
+        "unsubs_date": "9999-01-01 00:00:00"
+    },
+    {
+        "msisdn": "84763148847",
+        "id_operator": "29",
+        "id_service": "4521",
+        "status_api": "1",
+        "renewal_date": "2026-07-28 09:29:18",
+        "unsubs_date": "9999-01-01 00:00:00"
+    },
+    {
+        "msisdn": "84798077926",
+        "id_operator": "29",
+        "id_service": "4521",
+        "status_api": "1",
+        "renewal_date": "2026-07-28 00:46:47",
+        "unsubs_date": "9999-01-01 00:00:00"
+    },
+    {
+        "msisdn": "84799844238",
+        "id_operator": "29",
+        "id_service": "4521",
+        "status_api": "1",
+        "renewal_date": "2026-07-28 14:41:49",
+        "unsubs_date": "9999-01-01 00:00:00"
+    },
+    {
+        "msisdn": "84898226800",
+        "id_operator": "29",
+        "id_service": "4521",
+        "status_api": "1",
+        "renewal_date": "2026-07-28 18:50:28",
+        "unsubs_date": "9999-01-01 00:00:00"
+    },
+    {
+        "msisdn": "84903015713",
+        "id_operator": "29",
+        "id_service": "4521",
+        "status_api": "1",
+        "renewal_date": "2026-07-28 18:44:29",
+        "unsubs_date": "9999-01-01 00:00:00"
+    },
+    {
+        "msisdn": "84907135190",
+        "id_operator": "29",
+        "id_service": "4521",
+        "status_api": "1",
+        "renewal_date": "2026-07-28 11:14:00",
+        "unsubs_date": "9999-01-01 00:00:00"
+    },
+    {
+        "msisdn": "84907351002",
+        "id_operator": "29",
+        "id_service": "4521",
+        "status_api": "1",
+        "renewal_date": "2026-07-28 07:29:53",
+        "unsubs_date": "9999-01-01 00:00:00"
+    },
+    {
+        "msisdn": "84932139628",
+        "id_operator": "29",
+        "id_service": "4521",
+        "status_api": "1",
+        "renewal_date": "2026-07-28 09:49:11",
+        "unsubs_date": "9999-01-01 00:00:00"
+    },
+    {
+        "msisdn": "84934788596",
+        "id_operator": "29",
+        "id_service": "4521",
+        "status_api": "1",
+        "renewal_date": "2026-07-28 08:46:14",
+        "unsubs_date": "9999-01-01 00:00:00"
+    },
+    {
+        "msisdn": "84938319932",
+        "id_operator": "29",
+        "id_service": "4521",
+        "status_api": "1",
+        "renewal_date": "2026-07-28 20:28:41",
+        "unsubs_date": "9999-01-01 00:00:00"
+    },
+    {
+        "msisdn": "84938457195",
+        "id_operator": "29",
+        "id_service": "4521",
+        "status_api": "1",
+        "renewal_date": "2026-07-28 19:12:30",
+        "unsubs_date": "9999-01-01 00:00:00"
+    }
+]
