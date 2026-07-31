@@ -35,6 +35,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('daily-push', [\App\Http\Controllers\DailyPushController::class, 'store'])->name('daily_push.store');
         Route::put('daily-push/{dailyPush}', [\App\Http\Controllers\DailyPushController::class, 'update'])->name('daily_push.update');
         Route::post('daily-push/push-all', [\App\Http\Controllers\DailyPushController::class, 'pushAll'])->name('daily_push.pushAll');
+        Route::post('daily-push/sync', [\App\Http\Controllers\DailyPushController::class, 'syncFromEndpointConfigs'])->name('daily_push.sync');
         Route::delete('daily-push/{dailyPush}', [\App\Http\Controllers\DailyPushController::class, 'destroy'])->name('daily_push.destroy');
         Route::post('daily-push/{dailyPush}/push', [\App\Http\Controllers\DailyPushController::class, 'push'])->name('daily_push.push');
     });

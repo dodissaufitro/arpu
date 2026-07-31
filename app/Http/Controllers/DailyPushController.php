@@ -125,6 +125,35 @@ class DailyPushController extends Controller
         return redirect()->back()->with('success', "Push All completed. Success: {$successCount}, Failed: {$failCount}.");
     }
 
+    public function syncFromEndpointConfigs()
+    {
+        // Get all unique operator and id_service from Endpoint Configs (fixed)
+        $endpointConfigs = EndpointConfig::where('date_mode', 'fixed')->get();
+
+        $syncedCount = 0;
+        foreach ($endpointConfigs as $config) {
+            // Check if this combination already exists in Daily Push (yesterday)
+            $exists = EndpointConfig::where('date_mode', 'yesterday')
+                ->where('operator', $config->operator)
+                ->where('id_service', $config->id_service)
+                ->exists();
+
+            if (!$exists) {
+                EndpointConfig::create([
+                    'operator' => $config->operator,
+                    'operator_name' => $config->operator_name,
+                    'id_service' => $config->id_service,
+                    'service_name' => $config->service_name,
+                    'date_mode' => 'yesterday',
+                    'target_date' => null,
+                ]);
+                $syncedCount++;
+            }
+        }
+
+        return redirect()->back()->with('success', "Berhasil menyinkronkan {$syncedCount} konfigurasi baru dari Endpoint Configs ke Daily Push (H-1).");
+    }
+
     public function destroy(EndpointConfig $dailyPush)
     {
         $dailyPush->delete();

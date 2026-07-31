@@ -17,7 +17,7 @@ interface EndpointConfig {
 
 export default function Index({ configs, filters, operatorServices }: { configs: EndpointConfig[], filters: any, operatorServices: Record<string, string[]> }) {
     const { flash } = usePage().props as any;
-    const [isSubmitting, setIsSubmitting] = useState<number | 'all' | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState<number | 'all' | 'sync' | null>(null);
     const [editModeId, setEditModeId] = useState<number | null>(null);
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, config: EndpointConfig | null } | null>(null);
 
@@ -111,6 +111,15 @@ export default function Index({ configs, filters, operatorServices }: { configs:
         }
     };
 
+    const handleSyncFromEndpointConfigs = () => {
+        if (confirm('Sinkronkan konfigurasi dari Endpoint Configs? (Data yang sudah ada tidak akan diduplikasi)')) {
+            setIsSubmitting('sync');
+            router.post(`/daily-push/sync`, {}, {
+                onFinish: () => setIsSubmitting(null),
+            });
+        }
+    };
+
     const handleDelete = (id: number) => {
         if (confirm('Are you sure you want to delete this configuration?')) {
             router.delete(`/daily-push/${id}`);
@@ -127,20 +136,34 @@ export default function Index({ configs, filters, operatorServices }: { configs:
                         <h1 className="text-2xl font-bold text-slate-800">Daily Push (H-1)</h1>
                         <p className="text-sm text-slate-500 mt-1">Manage and execute daily data synchronization (Target Date is automatically set to Yesterday)</p>
                     </div>
-                    {configs.length > 0 && (
+                    <div className="flex gap-3">
                         <button
-                            onClick={handlePushAll}
-                            disabled={isSubmitting === 'all'}
-                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-colors shadow-sm disabled:opacity-50"
+                            onClick={handleSyncFromEndpointConfigs}
+                            disabled={isSubmitting === 'sync'}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-colors shadow-sm disabled:opacity-50"
                         >
-                            {isSubmitting === 'all' ? (
+                            {isSubmitting === 'sync' ? (
                                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                             ) : (
-                                <FastForward size={20} />
+                                <RefreshCw size={20} />
                             )}
-                            Push All (H-1)
+                            Sync dari Endpoint Configs
                         </button>
-                    )}
+                        {configs.length > 0 && (
+                            <button
+                                onClick={handlePushAll}
+                                disabled={isSubmitting === 'all'}
+                                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-colors shadow-sm disabled:opacity-50"
+                            >
+                                {isSubmitting === 'all' ? (
+                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                    <FastForward size={20} />
+                                )}
+                                Push All (H-1)
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {flash?.success && (
