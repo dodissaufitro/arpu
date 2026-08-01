@@ -15,6 +15,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('arpu-subscriptions', [\App\Http\Controllers\ArpuSubscriptionController::class, 'index'])->name('arpu_subscriptions.index')->middleware('permission:arpu.view');
+    Route::post('arpu-subscriptions/sync', [\App\Http\Controllers\ArpuSubscriptionController::class, 'sync'])->name('arpu_subscriptions.sync')->middleware('permission:arpu.view');
 
     Route::middleware('permission:tokens.view')->group(function () {
         Route::get('api-tokens', [\App\Http\Controllers\ApiTokenController::class, 'index'])->name('api_tokens.index');

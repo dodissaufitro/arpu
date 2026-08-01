@@ -83,4 +83,14 @@ class ArpuSubscriptionController extends Controller
             'operatorServices' => $operatorServices,
         ]);
     }
+
+    public function sync()
+    {
+        // Increase time limit in case there are many endpoints to fetch
+        set_time_limit(0); 
+        
+        \Illuminate\Support\Facades\Artisan::call('arpu:fetch');
+        
+        return back()->with('success', 'Sinkronisasi data berhasil dijalankan.');
+    }
 }

@@ -143,6 +143,24 @@ export default function Index({ subscriptions, metrics, operatorServices }: Page
         });
     };
 
+    const [isSyncing, setIsSyncing] = useState(false);
+
+    const handleSync = () => {
+        setIsSyncing(true);
+        router.post(route('arpu_subscriptions.sync'), {}, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setIsSyncing(false);
+            },
+            onError: () => {
+                setIsSyncing(false);
+            },
+            onFinish: () => {
+                setIsSyncing(false);
+            }
+        });
+    };
+
     // Safely check if data is available
     const hasData = subscriptions && subscriptions.data && subscriptions.data.length > 0;
     const hasPagination = subscriptions && subscriptions.links && subscriptions.links.length > 3;
@@ -179,9 +197,15 @@ export default function Index({ subscriptions, metrics, operatorServices }: Page
                                 <span className="flex h-2 w-2 rounded-full bg-blue-600"></span>
                             )}
                         </button>
-                        <button className="hidden md:flex items-center gap-2 bg-[#10b981] hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm">
-                            <RefreshCw size={16} />
-                            <span>Sinkronisasi Data</span>
+                        <button 
+                            onClick={handleSync}
+                            disabled={isSyncing}
+                            className={`hidden md:flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm ${
+                                isSyncing ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#10b981] hover:bg-emerald-600 text-white'
+                            }`}
+                        >
+                            <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
+                            <span>{isSyncing ? 'Menyinkronkan...' : 'Sinkronisasi Data'}</span>
                         </button>
                     </div>
                 </div>
