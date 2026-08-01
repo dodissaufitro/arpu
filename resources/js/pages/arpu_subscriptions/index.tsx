@@ -286,33 +286,14 @@ export default function Index({ subscriptions, metrics, operatorServices }: Page
                             <tr className="bg-slate-50 border-b border-slate-100">
                                 <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">ID</th>
                                 <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">MSISDN</th>
-                                <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Country</th>
                                 <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Operator</th>
-                                <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">ID Operator</th>
-                                <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">ID Service</th>
                                 <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Service</th>
                                 <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Keyword</th>
-                                <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Source</th>
                                 <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center">Status</th>
-                                <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Cycle</th>
-                                <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">AdNet</th>
                                 <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Revenue</th>
                                 <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Subs Date</th>
                                 <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Renewal Date</th>
-                                <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Freemium End</th>
-                                <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Unsubs From</th>
                                 <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Unsubs Date</th>
-                                <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Service Price</th>
-                                <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Currency</th>
-                                <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Profile Status</th>
-                                <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Publisher</th>
-                                <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">TRX ID</th>
-                                <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Pixel</th>
-                                <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Handset</th>
-                                <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Browser</th>
-                                <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Attempt Charge</th>
-                                <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Success Billing</th>
-                                <th className="py-3 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Created At</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -321,13 +302,9 @@ export default function Index({ subscriptions, metrics, operatorServices }: Page
                                     <tr key={sub.id} className="hover:bg-blue-50/50 transition-colors group">
                                         <td className="py-3 px-6 text-sm text-slate-500 font-medium whitespace-nowrap">{sub.id}</td>
                                         <td className="py-3 px-6 text-sm font-semibold text-slate-700 whitespace-nowrap">{sub.msisdn || '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.country || '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.operator || '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.id_operator || '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.id_service || '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.service || '-'}</td>
+                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.operator || sub.id_operator || '-'}</td>
+                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.service || sub.id_service || '-'}</td>
                                         <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.keyword || '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.source || '-'}</td>
                                         <td className="py-3 px-6 text-center whitespace-nowrap">
                                             <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
                                                 String(sub.status) === '1' ? 'bg-emerald-100 text-emerald-700' :
@@ -337,30 +314,15 @@ export default function Index({ subscriptions, metrics, operatorServices }: Page
                                                 {String(sub.status) === '1' ? 'ACTIVE' : String(sub.status) === '-1' ? 'INACTIVE' : sub.status || 'UNKNOWN'}
                                             </span>
                                         </td>
-                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.cycle || '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.adnet || '-'}</td>
                                         <td className="py-3 px-6 text-sm font-medium text-emerald-600 whitespace-nowrap">{sub.revenue ? `Rp. ${sub.revenue}` : '-'}</td>
                                         <td className="py-3 px-6 text-sm text-slate-500 whitespace-nowrap">{sub.subs_date || '-'}</td>
                                         <td className="py-3 px-6 text-sm text-slate-500 whitespace-nowrap">{sub.renewal_date || '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-500 whitespace-nowrap">{sub.freemium_end_date || '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.unsubs_from || '-'}</td>
                                         <td className="py-3 px-6 text-sm text-slate-500 whitespace-nowrap">{sub.unsubs_date || '-'}</td>
-                                        <td className="py-3 px-6 text-sm font-medium text-slate-600 whitespace-nowrap">{sub.service_price || '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.currency || '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.profile_status || '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.publisher || '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.trxid || '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.pixel || '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.handset || '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.browser || '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.attempt_charging ?? '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.success_billing ?? '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-500 whitespace-nowrap">{sub.created_at ? String(sub.created_at).split('T')[0] : '-'}</td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={28} className="py-12 text-center text-slate-400">
+                                    <td colSpan={10} className="py-12 text-center text-slate-400">
                                         <div className="flex flex-col items-center justify-center">
                                             <Database size={32} className="mb-3 text-slate-300" />
                                             {hasActiveFilters ? (

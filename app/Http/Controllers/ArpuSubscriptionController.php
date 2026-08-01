@@ -75,7 +75,7 @@ class ArpuSubscriptionController extends Controller
                 })->values()->toArray();
         });
 
-        $subscriptions = $query->latest()->paginate(10)->onEachSide(1)->withQueryString();
+        $subscriptions = $query->latest()->paginate(25)->onEachSide(1)->withQueryString();
 
         return Inertia::render('arpu_subscriptions/index', [
             'subscriptions' => $subscriptions,
