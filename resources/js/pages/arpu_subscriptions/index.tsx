@@ -389,10 +389,21 @@ export default function Index({ subscriptions, metrics, operatorServices }: Page
                                     ? { dangerouslySetInnerHTML: { __html: label } }
                                     : { children: label };
                                 
+                                const getRelativeUrl = (url: string) => {
+                                    try {
+                                        const urlObj = new URL(url);
+                                        return urlObj.pathname + urlObj.search;
+                                    } catch (e) {
+                                        return url;
+                                    }
+                                };
+                                
                                 return link.url ? (
                                     <Link
                                         key={i}
-                                        href={link.url}
+                                        href={getRelativeUrl(link.url)}
+                                        preserveScroll
+                                        preserveState
                                         className={`min-w-[32px] h-8 flex items-center justify-center rounded-md text-sm font-medium transition-colors ${
                                             link.active 
                                                 ? 'bg-[#1a56db] text-white shadow-sm' 

@@ -489,10 +489,19 @@ export default function Index({ configs, filters, operatorServices }: { configs:
                                                 );
                                             }
                                             
+                                            const getRelativeUrl = (url: string) => {
+                                                try {
+                                                    const urlObj = new URL(url);
+                                                    return urlObj.pathname + urlObj.search;
+                                                } catch (e) {
+                                                    return url;
+                                                }
+                                            };
+                                            
                                             return (
                                                 <Link
                                                     key={i}
-                                                    href={link.url}
+                                                    href={getRelativeUrl(link.url)}
                                                     preserveScroll
                                                     preserveState
                                                     className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
