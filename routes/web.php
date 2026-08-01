@@ -25,6 +25,7 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('permission:endpoints.view')->group(function () {
         Route::get('endpoint-configs', [\App\Http\Controllers\EndpointConfigController::class, 'index'])->name('endpoint_configs.index');
         Route::post('endpoint-configs', [\App\Http\Controllers\EndpointConfigController::class, 'store'])->name('endpoint_configs.store');
+        Route::post('endpoint-configs/sync', [\App\Http\Controllers\EndpointConfigController::class, 'syncData'])->name('endpoint_configs.sync');
         Route::put('endpoint-configs/{endpointConfig}', [\App\Http\Controllers\EndpointConfigController::class, 'update'])->name('endpoint_configs.update');
         Route::delete('endpoint-configs/{endpointConfig}', [\App\Http\Controllers\EndpointConfigController::class, 'destroy'])->name('endpoint_configs.destroy');
         Route::post('endpoint-configs/{endpointConfig}/push', [\App\Http\Controllers\EndpointConfigController::class, 'push'])->name('endpoint_configs.push');
@@ -34,6 +35,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('daily-push', [\App\Http\Controllers\DailyPushController::class, 'index'])->name('daily_push.index');
         Route::post('daily-push', [\App\Http\Controllers\DailyPushController::class, 'store'])->name('daily_push.store');
         Route::put('daily-push/{dailyPush}', [\App\Http\Controllers\DailyPushController::class, 'update'])->name('daily_push.update');
+        Route::get('daily-push/all-ids', [\App\Http\Controllers\DailyPushController::class, 'getAllIds'])->name('daily_push.getAllIds');
         Route::post('daily-push/push-all', [\App\Http\Controllers\DailyPushController::class, 'pushAll'])->name('daily_push.pushAll');
         Route::post('daily-push/sync', [\App\Http\Controllers\DailyPushController::class, 'syncFromEndpointConfigs'])->name('daily_push.sync');
         Route::delete('daily-push/{dailyPush}', [\App\Http\Controllers\DailyPushController::class, 'destroy'])->name('daily_push.destroy');

@@ -22,7 +22,7 @@ class DailyPushController extends Controller
             $query->where('service_name', $request->service_name);
         }
 
-        $configs = $query->latest()->get();
+        $configs = $query->latest()->paginate(15)->withQueryString();
 
         $operatorServices = EndpointConfig::where('date_mode', 'yesterday')
             ->whereNotNull('operator_name')
@@ -72,7 +72,7 @@ class DailyPushController extends Controller
         return redirect()->back()->with('success', 'Daily push configuration updated successfully.');
     }
 
-    public function push(EndpointConfig $dailyPush, ArpuFetchService $arpuFetchService)
+    public function push(Request $request, EndpointConfig $dailyPush, ArpuFetchService $arpuFetchService)
     {
         // For Daily Push, the target date is always H-1 (yesterday)
         $targetDateStr = Carbon::yesterday()->format('Y-m-d');
@@ -88,14 +88,28 @@ class DailyPushController extends Controller
                 'last_run_at' => Carbon::now(),
                 'status' => 'success',
             ]);
+            
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true, 'message' => $result['message']]);
+            }
             return redirect()->back()->with('success', $result['message']);
         } else {
             $dailyPush->update([
                 'last_run_at' => Carbon::now(),
                 'status' => 'failed',
             ]);
+            
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $result['message']], 400);
+            }
             return redirect()->back()->with('error', $result['message']);
         }
+    }
+
+    public function getAllIds()
+    {
+        $ids = EndpointConfig::where('date_mode', 'yesterday')->pluck('id');
+        return response()->json(['ids' => $ids]);
     }
 
     public function pushAll(ArpuFetchService $arpuFetchService)

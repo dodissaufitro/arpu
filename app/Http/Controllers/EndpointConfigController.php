@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Services\ArpuFetchService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Http;
 
 class EndpointConfigController extends Controller
 {
@@ -104,5 +105,45 @@ class EndpointConfigController extends Controller
     {
         $endpointConfig->delete();
         return redirect()->back()->with('success', 'Endpoint configuration deleted.');
+    }
+
+    public function syncData(Request $request)
+    {
+        $request->validate([
+            'operator' => 'required|integer',
+        ]);
+
+        $url = env('SYNC_SERVICE_API_URL', 'http://149.129.252.221/app/filetest/dataarpu/service.php');
+        
+        $response = Http::get($url, [
+            'operator' => $request->operator
+        ]);
+
+        if ($response->successful()) {
+            $data = $response->json();
+            
+            if (isset($data['status']) && $data['status'] === 'success' && isset($data['data'])) {
+                $count = 0;
+                foreach ($data['data'] as $item) {
+                    EndpointConfig::updateOrCreate(
+                        [
+                            'operator' => $item['operator'],
+                            'id_service' => $item['id_service']
+                        ],
+                        [
+                            'operator_name' => $item['operator_rule'],
+                            'service_name' => $item['keyword'],
+                            'date_mode' => 'yesterday',
+                            'target_date' => null,
+                        ]
+                    );
+                    $count++;
+                }
+
+                return redirect()->back()->with('success', "Berhasil mensinkronisasi $count data Endpoint Configs dari API.");
+            }
+        }
+
+        return redirect()->back()->with('error', 'Gagal mengambil data dari API.');
     }
 }

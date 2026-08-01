@@ -21,6 +21,9 @@ export default function Index({ configs, filters, operatorServices }: { configs:
     const [isSubmitting, setIsSubmitting] = useState<number | null>(null);
     const [editModeId, setEditModeId] = useState<number | null>(null);
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, config: EndpointConfig | null } | null>(null);
+    const [showSyncModal, setShowSyncModal] = useState(false);
+    const [syncOperator, setSyncOperator] = useState('');
+    const [isSyncing, setIsSyncing] = useState(false);
 
     // Close context menu when clicking outside
     React.useEffect(() => {
@@ -115,6 +118,18 @@ export default function Index({ configs, filters, operatorServices }: { configs:
         }
     };
 
+    const handleSync = (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSyncing(true);
+        router.post('/endpoint-configs/sync', { operator: syncOperator }, {
+            onFinish: () => {
+                setIsSyncing(false);
+                setShowSyncModal(false);
+                setSyncOperator('');
+            }
+        });
+    };
+
     return (
         <DashboardLayout>
             <Head title="Endpoint Configurations" />
@@ -125,6 +140,13 @@ export default function Index({ configs, filters, operatorServices }: { configs:
                         <h1 className="text-2xl font-bold text-slate-800">Endpoint Configurations</h1>
                         <p className="text-sm text-slate-500 mt-1">Manage API parameters for ARPU data synchronization</p>
                     </div>
+                    <button
+                        onClick={() => setShowSyncModal(true)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#1a56db] hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-sm"
+                    >
+                        <RefreshCw size={16} />
+                        Sync from API
+                    </button>
                 </div>
 
                 {flash?.success && (
@@ -446,6 +468,61 @@ export default function Index({ configs, filters, operatorServices }: { configs:
                         <RefreshCw size={16} className="text-emerald-500" />
                         Copy as New
                     </button>
+                </div>
+            )}
+
+            {/* Sync Modal */}
+            {showSyncModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-slate-800">Sync from API</h3>
+                            <button onClick={() => setShowSyncModal(false)} className="text-slate-400 hover:text-slate-600">
+                                <XCircle size={24} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleSync}>
+                            <div className="p-6 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-1">Operator ID</label>
+                                    <input
+                                        type="number"
+                                        value={syncOperator}
+                                        onChange={e => setSyncOperator(e.target.value)}
+                                        className="w-full px-4 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                        placeholder="e.g. 232"
+                                        required
+                                    />
+                                    <p className="text-xs text-slate-500 mt-2">
+                                        Data for the provided operator will be fetched from the configured API and imported.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowSyncModal(false)}
+                                    className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isSyncing}
+                                    className="px-4 py-2 text-sm font-bold text-white bg-[#1a56db] hover:bg-blue-700 rounded-xl transition-colors disabled:opacity-50 inline-flex items-center gap-2"
+                                >
+                                    {isSyncing ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            Syncing...
+                                        </>
+                                    ) : (
+                                        'Start Sync'
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             )}
         </DashboardLayout>

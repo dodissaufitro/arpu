@@ -1,1 +1,1 @@
-php artisan arpu:fetch
+0 0 * * * cd /path/ke/folder/arpu_subscription && php artisan arpu:fetch >> /dev/null 2>&1

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import DashboardLayout from '@/layouts/DashboardLayout';
-import { Head, useForm, usePage, router } from '@inertiajs/react';
-import { Play, Plus, Trash2, Calendar, Database, Hash, CheckCircle, XCircle, Clock, FastForward, Settings, RefreshCw } from 'lucide-react';
+import { Head, useForm, usePage, router, Link } from '@inertiajs/react';
+import { Play, Plus, Trash2, Calendar, Database, Hash, CheckCircle, XCircle, Clock, FastForward, Settings, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import dayjs from 'dayjs';
+import axios from 'axios';
 
 interface EndpointConfig {
     id: number;
@@ -15,9 +16,20 @@ interface EndpointConfig {
     status: string | null;
 }
 
-export default function Index({ configs, filters, operatorServices }: { configs: EndpointConfig[], filters: any, operatorServices: Record<string, string[]> }) {
+interface PaginatedData<T> {
+    data: T[];
+    links: { url: string | null; label: string; active: boolean }[];
+    current_page: number;
+    last_page: number;
+    from: number;
+    to: number;
+    total: number;
+}
+
+export default function Index({ configs, filters, operatorServices }: { configs: PaginatedData<EndpointConfig>, filters: any, operatorServices: Record<string, string[]> }) {
     const { flash } = usePage().props as any;
     const [isSubmitting, setIsSubmitting] = useState<number | 'all' | 'sync' | null>(null);
+    const [pushProgress, setPushProgress] = useState<{ current: number; total: number } | null>(null);
     const [editModeId, setEditModeId] = useState<number | null>(null);
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, config: EndpointConfig | null } | null>(null);
 
@@ -102,12 +114,44 @@ export default function Index({ configs, filters, operatorServices }: { configs:
         });
     };
 
-    const handlePushAll = () => {
-        if (confirm('Are you sure you want to push ALL configurations for H-1?')) {
+    const handlePushAll = async () => {
+        if (confirm('Are you sure you want to push ALL configurations for H-1 sequentially? This may take some time.')) {
             setIsSubmitting('all');
-            router.post(`/daily-push/push-all`, {}, {
-                onFinish: () => setIsSubmitting(null),
-            });
+            
+            try {
+                // Get all IDs
+                const response = await axios.get('/daily-push/all-ids', { headers: { Accept: 'application/json' } });
+                const ids = response.data.ids;
+                
+                if (ids.length === 0) {
+                    setIsSubmitting(null);
+                    return;
+                }
+                
+                setPushProgress({ current: 0, total: ids.length });
+                
+                // Process sequentially
+                for (let i = 0; i < ids.length; i++) {
+                    try {
+                        await axios.post(`/daily-push/${ids[i]}/push`, {}, { 
+                            headers: { Accept: 'application/json' } 
+                        });
+                    } catch (err) {
+                        console.error(`Failed to push ID ${ids[i]}`, err);
+                        // Continue to next item even if one fails
+                    }
+                    setPushProgress({ current: i + 1, total: ids.length });
+                }
+                
+                // Reload to reflect changes
+                router.visit(window.location.href, { preserveScroll: true, preserveState: true });
+            } catch (error) {
+                console.error("Failed to fetch IDs or execute push all", error);
+                alert("An error occurred during sequential push.");
+            } finally {
+                setIsSubmitting(null);
+                setPushProgress(null);
+            }
         }
     };
 
@@ -149,18 +193,23 @@ export default function Index({ configs, filters, operatorServices }: { configs:
                             )}
                             Sync dari Endpoint Configs
                         </button>
-                        {configs.length > 0 && (
+                        {configs.data.length > 0 && (
                             <button
                                 onClick={handlePushAll}
                                 disabled={isSubmitting === 'all'}
                                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-colors shadow-sm disabled:opacity-50"
                             >
                                 {isSubmitting === 'all' ? (
-                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    <>
+                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        {pushProgress ? `Pushing (${pushProgress.current}/${pushProgress.total})` : 'Pushing...'}
+                                    </>
                                 ) : (
-                                    <FastForward size={20} />
+                                    <>
+                                        <FastForward size={20} />
+                                        Push All (H-1)
+                                    </>
                                 )}
-                                Push All (H-1)
                             </button>
                         )}
                     </div>
@@ -335,14 +384,14 @@ export default function Index({ configs, filters, operatorServices }: { configs:
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
-                                        {configs.length === 0 ? (
+                                        {configs.data.length === 0 ? (
                                             <tr>
                                                 <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
                                                     No daily configurations found. Add one to get started.
                                                 </td>
                                             </tr>
                                         ) : (
-                                            configs.map(config => (
+                                            configs.data.map(config => (
                                                 <tr 
                                                     key={config.id} 
                                                     className="hover:bg-slate-50 transition-colors cursor-context-menu"
@@ -421,6 +470,32 @@ export default function Index({ configs, filters, operatorServices }: { configs:
                                     </tbody>
                                 </table>
                             </div>
+                            
+                            {/* Pagination Controls */}
+                            {configs.last_page > 1 && (
+                                <div className="px-6 py-4 border-t border-slate-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-4">
+                                    <div className="text-sm text-slate-500">
+                                        Showing <span className="font-semibold text-slate-700">{configs.from}</span> to <span className="font-semibold text-slate-700">{configs.to}</span> of <span className="font-semibold text-slate-700">{configs.total}</span> results
+                                    </div>
+                                    <div className="flex gap-1">
+                                        {configs.links.map((link, i) => (
+                                            <Link
+                                                key={i}
+                                                href={link.url || '#'}
+                                                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                                                    link.active
+                                                        ? 'bg-blue-600 text-white shadow-sm'
+                                                        : !link.url
+                                                        ? 'text-slate-400 cursor-not-allowed'
+                                                        : 'text-slate-600 hover:bg-slate-100'
+                                                }`}
+                                                dangerouslySetInnerHTML={{ __html: link.label }}
+                                                onClick={e => !link.url && e.preventDefault()}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
