@@ -84,6 +84,9 @@ class FetchArpuSubscriptions extends Command
                     'status' => 'failed',
                 ]);
             }
+
+            // Jeda 2 detik sebelum memanggil API berikutnya agar tidak membebani server target
+            sleep(2);
         });
 
         $this->newLine(2);
