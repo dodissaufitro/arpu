@@ -32,34 +32,41 @@ class ArpuSubscriptionController extends Controller
             $query->where('subs_date', '<=', $request->end_date . ' 23:59:59');
         }
 
-        $metrics = [
-            'total_data' => (clone $query)->count(),
-            'total_active' => (clone $query)->where('status', '1')->count(),
-            'total_inactive' => (clone $query)->where('status', '-1')->count(),
-            'total_revenue' => (clone $query)->sum('revenue') ?? 0,
-        ];
+        $filterParams = $request->except('page');
+        $cacheKey = 'arpu_metrics_' . md5(json_encode($filterParams));
 
-        $operatorServices = ArpuSubscription::select('id_operator', 'operator', 'id_service', 'service')
-            ->whereNotNull('id_operator')
-            ->whereNotNull('id_service')
-            ->distinct()
-            ->get()
-            ->groupBy('id_operator')
-            ->map(function ($items) {
-                $operatorName = $items->first()->operator;
-                $services = $items->map(function ($item) {
+        $metrics = \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function () use ($query) {
+            return [
+                'total_data' => (clone $query)->count(),
+                'total_active' => (clone $query)->where('status', '1')->count(),
+                'total_inactive' => (clone $query)->where('status', '-1')->count(),
+                'total_revenue' => (clone $query)->sum('revenue') ?? 0,
+            ];
+        });
+
+        $operatorServices = \Illuminate\Support\Facades\Cache::remember('arpu_operator_services', 86400, function () {
+            return ArpuSubscription::select('id_operator', 'operator', 'id_service', 'service')
+                ->whereNotNull('id_operator')
+                ->whereNotNull('id_service')
+                ->distinct()
+                ->get()
+                ->groupBy('id_operator')
+                ->map(function ($items) {
+                    $operatorName = $items->first()->operator;
+                    $services = $items->map(function ($item) {
+                        return [
+                            'id_service' => $item->id_service,
+                            'service_name' => $item->service,
+                        ];
+                    })->unique('id_service')->values()->toArray();
+
                     return [
-                        'id_service' => $item->id_service,
-                        'service_name' => $item->service,
+                        'id_operator' => $items->first()->id_operator,
+                        'operator_name' => $operatorName,
+                        'services' => $services,
                     ];
-                })->unique('id_service')->values()->toArray();
-
-                return [
-                    'id_operator' => $items->first()->id_operator,
-                    'operator_name' => $operatorName,
-                    'services' => $services,
-                ];
-            })->values()->toArray();
+                })->values()->toArray();
+        });
 
         $subscriptions = $query->latest()->paginate(10)->onEachSide(1)->withQueryString();
 
