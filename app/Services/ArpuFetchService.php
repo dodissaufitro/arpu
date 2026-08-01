@@ -29,10 +29,8 @@ class ArpuFetchService
 
                 if (isset($data['status']) && $data['status'] === 'success' && isset($data['data'])) {
                     $subscriptions = $data['data'];
-                    
-                    $activeBatch = [];
-                    $inactiveBatch = [];
-                    $otherBatch = [];
+                    $totalInserted = 0;
+                    $totalUpdated = 0;
 
                     foreach ($subscriptions as $subscription) {
                         $recordData = [
@@ -66,51 +64,54 @@ class ArpuFetchService
                             'created_at' => isset($subscription['created_at']) ? Carbon::parse($subscription['created_at']) : Carbon::now(),
                         ];
 
-                        $status = $subscription['status'] ?? null;
-                        if ($status == 1) {
-                            $activeBatch[] = $recordData;
-                        } elseif ($status == -1) {
-                            $inactiveBatch[] = $recordData;
+                        $existingRecord = DB::table('arpu_subscriptions')
+                            ->where('msisdn', $subscription['msisdn'])
+                            ->where('id_service', $subscription['id_service'])
+                            ->where('id_operator', $subscription['id_operator'])
+                            ->first();
+
+                        if ($existingRecord) {
+                            $updateData = [];
+                            $incomingStatus = $subscription['status'] ?? null;
+                            
+                            if ($incomingStatus == 1) {
+                                $updateData = [
+                                    'status' => 1,
+                                    'renewal_date' => $subscription['renewal_date'] ?? null,
+                                    'trxid' => $subscription['trxid'] ?? 'NA',
+                                    'attempt_charging' => $subscription['attempt_charging'] ?? 0,
+                                    'success_billing' => $subscription['success_billing'] ?? 0,
+                                    'service_price' => isset($subscription['service_price']) ? (float)$subscription['service_price'] : null,
+                                ];
+                            } elseif ($incomingStatus == -1) {
+                                $updateData = [
+                                    'status' => -1,
+                                    'unsubs_date' => $subscription['unsubs_date'] ?? null,
+                                    'unsubs_from' => $subscription['unsubs_from'] ?? 'sms',
+                                    'service_price' => isset($subscription['service_price']) ? (float)$subscription['service_price'] : null,
+                                ];
+                            }
+
+                            if (!empty($updateData)) {
+                                DB::table('arpu_subscriptions')
+                                    ->where('id', $existingRecord->id)
+                                    ->update($updateData);
+                                $totalUpdated++;
+                            }
                         } else {
-                            $otherBatch[] = $recordData;
+                            DB::table('arpu_subscriptions')->insert($recordData);
+                            $totalInserted++;
                         }
                     }
-
-                    // Perform Bulk Upsert for Active records (1000 per query)
-                    foreach (array_chunk($activeBatch, 1000) as $chunk) {
-                        DB::table('arpu_subscriptions')->upsert(
-                            $chunk,
-                            ['msisdn', 'id_service', 'id_operator'],
-                            ['status', 'renewal_date', 'trxid', 'attempt_charging', 'success_billing', 'revenue']
-                        );
-                    }
-
-                    // Perform Bulk Upsert for Inactive records (1000 per query)
-                    foreach (array_chunk($inactiveBatch, 1000) as $chunk) {
-                        DB::table('arpu_subscriptions')->upsert(
-                            $chunk,
-                            ['msisdn', 'id_service', 'id_operator'],
-                            ['status', 'unsubs_date', 'unsubs_from', 'revenue']
-                        );
-                    }
-
-                    // Perform Insert Or Ignore for other records (if they exist, do nothing)
-                    foreach (array_chunk($otherBatch, 1000) as $chunk) {
-                        DB::table('arpu_subscriptions')->insertOrIgnore($chunk);
-                    }
-                    
-                    $totalProcessed = count($subscriptions);
-
-                    // Clear the operator services cache so new operators show up in the dropdown
-                    if ($totalProcessed > 0) {
+                    if ($totalInserted > 0 || $totalUpdated > 0) {
                         \Illuminate\Support\Facades\Cache::forget('arpu_operator_services');
                     }
 
                     return [
                         'success' => true,
-                        'message' => "Successfully bulk upserted data. Processed: {$totalProcessed}",
-                        'inserted' => $totalProcessed,
-                        'updated' => 0,
+                        'message' => "Successfully fetched data. Inserted: {$totalInserted} | Updated: {$totalUpdated}",
+                        'inserted' => $totalInserted,
+                        'updated' => $totalUpdated,
                     ];
                 } else {
                     return [
