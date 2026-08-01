@@ -478,21 +478,32 @@ export default function Index({ configs, filters, operatorServices }: { configs:
                                         Showing <span className="font-semibold text-slate-700">{configs.from}</span> to <span className="font-semibold text-slate-700">{configs.to}</span> of <span className="font-semibold text-slate-700">{configs.total}</span> results
                                     </div>
                                     <div className="flex gap-1">
-                                        {configs.links.map((link, i) => (
-                                            <Link
-                                                key={i}
-                                                href={link.url || '#'}
-                                                className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                                                    link.active
-                                                        ? 'bg-blue-600 text-white shadow-sm'
-                                                        : !link.url
-                                                        ? 'text-slate-400 cursor-not-allowed'
-                                                        : 'text-slate-600 hover:bg-slate-100'
-                                                }`}
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                                onClick={e => !link.url && e.preventDefault()}
-                                            />
-                                        ))}
+                                        {configs.links.map((link, i) => {
+                                            if (!link.url) {
+                                                return (
+                                                    <span
+                                                        key={i}
+                                                        className="px-3 py-1.5 text-sm font-medium rounded-lg text-slate-400 cursor-not-allowed"
+                                                        dangerouslySetInnerHTML={{ __html: link.label }}
+                                                    />
+                                                );
+                                            }
+                                            
+                                            return (
+                                                <Link
+                                                    key={i}
+                                                    href={link.url}
+                                                    preserveScroll
+                                                    preserveState
+                                                    className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                                                        link.active
+                                                            ? 'bg-blue-600 text-white shadow-sm pointer-events-none'
+                                                            : 'text-slate-600 hover:bg-slate-100'
+                                                    }`}
+                                                    dangerouslySetInnerHTML={{ __html: link.label }}
+                                                />
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
