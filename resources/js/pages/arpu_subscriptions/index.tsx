@@ -189,20 +189,22 @@ export default function Index({ subscriptions, metrics, operatorServices }: Page
                 {/* Filter Section */}
                 {showFilters && (
                     <div className="p-4 border-b border-slate-100 bg-slate-50 flex flex-wrap items-center gap-3">
-                        <div className="relative flex-1 min-w-[130px]">
+                        <div className="relative flex-1 min-w-[140px] flex items-center gap-2">
+                            <span className="text-xs font-semibold text-slate-500 uppercase">Dari:</span>
                             <input 
                                 type="date"
                                 value={startDate}
                                 onChange={e => setStartDate(e.target.value)}
-                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none text-slate-500"
+                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none text-slate-700"
                             />
                         </div>
-                        <div className="relative flex-1 min-w-[130px]">
+                        <div className="relative flex-1 min-w-[140px] flex items-center gap-2">
+                            <span className="text-xs font-semibold text-slate-500 uppercase">Sampai:</span>
                             <input 
                                 type="date"
                                 value={endDate}
                                 onChange={e => setEndDate(e.target.value)}
-                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none text-slate-500"
+                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none text-slate-700"
                             />
                         </div>
                         <SearchableSelect
@@ -361,7 +363,11 @@ export default function Index({ subscriptions, metrics, operatorServices }: Page
                                     <td colSpan={28} className="py-12 text-center text-slate-400">
                                         <div className="flex flex-col items-center justify-center">
                                             <Database size={32} className="mb-3 text-slate-300" />
-                                            <p className="text-sm font-medium">Belum ada data subscription</p>
+                                            {hasActiveFilters ? (
+                                                <p className="text-sm font-medium">Data tidak ditemukan dengan filter tersebut</p>
+                                            ) : (
+                                                <p className="text-sm font-medium">Silakan pilih dan terapkan filter untuk menampilkan data</p>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

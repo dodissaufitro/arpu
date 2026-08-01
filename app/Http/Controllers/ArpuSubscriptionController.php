@@ -10,7 +10,14 @@ class ArpuSubscriptionController extends Controller
 {
     public function index(Request $request)
     {
+        $hasFilters = $request->filled('search') || $request->filled('id_operator') || $request->filled('id_service') || $request->filled('start_date') || $request->filled('end_date');
+
         $query = ArpuSubscription::query();
+
+        if (!$hasFilters) {
+            // Return empty query if no filters applied to save load
+            $query->whereRaw('1 = 0');
+        }
 
         if ($request->filled('search')) {
             $query->where('msisdn', 'like', '%' . $request->search . '%');
