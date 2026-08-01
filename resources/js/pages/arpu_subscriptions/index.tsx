@@ -57,9 +57,68 @@ interface PageProps {
         total_inactive: number;
         total_revenue: number;
     };
+    operatorServices?: {
+        id_operator: string;
+        operator_name: string;
+        services: {
+            id_service: string;
+            service_name: string;
+        }[];
+    }[];
 }
 
-export default function Index({ subscriptions, metrics }: PageProps) {
+const SearchableSelect = ({ value, onChange, options, placeholder }: { value: string, onChange: (val: string) => void, options: {value: string, label: string}[], placeholder: string }) => {
+    const [query, setQuery] = useState('');
+    const [isOpen, setIsOpen] = useState(false);
+    
+    const filteredOptions = query === '' 
+        ? options 
+        : options.filter(opt => opt.label.toLowerCase().includes(query.toLowerCase()));
+        
+    const selectedOption = options.find(o => o.value === value);
+
+    return (
+        <div className="relative flex-1 min-w-[150px]">
+            <input 
+                type="text"
+                value={isOpen ? query : (selectedOption ? selectedOption.label : '')}
+                onChange={e => {
+                    setQuery(e.target.value);
+                    if (!isOpen) setIsOpen(true);
+                    if (e.target.value === '') onChange('');
+                }}
+                onFocus={() => setIsOpen(true)}
+                onBlur={() => setTimeout(() => setIsOpen(false), 200)}
+                placeholder={placeholder}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none text-slate-700"
+            />
+            {isOpen && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                    <div 
+                        className="px-3 py-2 text-sm hover:bg-slate-50 cursor-pointer text-slate-500"
+                        onMouseDown={(e) => { e.preventDefault(); onChange(''); setIsOpen(false); setQuery(''); }}
+                    >
+                        Semua {placeholder}
+                    </div>
+                    {filteredOptions.map(opt => (
+                        <div 
+                            key={opt.value}
+                            className="px-3 py-2 text-sm hover:bg-blue-50 cursor-pointer text-slate-700"
+                            onMouseDown={(e) => { e.preventDefault(); onChange(opt.value); setIsOpen(false); setQuery(''); }}
+                        >
+                            {opt.label}
+                        </div>
+                    ))}
+                    {filteredOptions.length === 0 && (
+                        <div className="px-3 py-2 text-sm text-slate-400">Tidak ditemukan</div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default function Index({ subscriptions, metrics, operatorServices }: PageProps) {
     const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     const [searchQuery, setSearchQuery] = useState(searchParams?.get('search') || '');
     const [idOperator, setIdOperator] = useState(searchParams?.get('id_operator') || '');
@@ -119,26 +178,30 @@ export default function Index({ subscriptions, metrics }: PageProps) {
                                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none text-slate-500"
                             />
                         </div>
-                        <div className="relative flex-1 min-w-[120px]">
-                            <input 
-                                type="text" 
-                                value={idOperator}
-                                onChange={e => setIdOperator(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                                placeholder="ID Operator..." 
-                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
-                            />
-                        </div>
-                        <div className="relative flex-1 min-w-[120px]">
-                            <input 
-                                type="text" 
+                        <SearchableSelect
+                            value={idOperator}
+                            onChange={(val) => {
+                                setIdOperator(val);
+                                setIdService('');
+                            }}
+                            placeholder="Operator"
+                            options={operatorServices ? operatorServices.map(op => ({
+                                value: op.id_operator,
+                                label: op.operator_name ? `${op.operator_name} (${op.id_operator})` : op.id_operator
+                            })) : []}
+                        />
+                        
+                        {idOperator && (
+                            <SearchableSelect
                                 value={idService}
-                                onChange={e => setIdService(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                                placeholder="ID Service..." 
-                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                                onChange={setIdService}
+                                placeholder="Service"
+                                options={operatorServices?.find(op => op.id_operator === idOperator)?.services.map(svc => ({
+                                    value: svc.id_service,
+                                    label: svc.service_name ? `${svc.service_name} (${svc.id_service})` : svc.id_service
+                                })) || []}
                             />
-                        </div>
+                        )}
                         <div className="relative flex-1 md:w-56 min-w-[150px]">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                             <input 

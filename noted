@@ -1,2 +1,5 @@
 0 0 * * * cd /path/ke/folder/arpu_subscription && php artisan arpu:fetch >> /dev/null 2>&1
 0 0 * * * docker exec -i 8f31c8f9acf8 php /app/artisan arpu:fetch >> /dev/null 2>&1
+
+
+0 0 * * * docker exec -i 8f31c8f9acf8 php /app/artisan arpu:fetch >> /dev/null 2>&1

@@ -39,11 +39,34 @@ class ArpuSubscriptionController extends Controller
             'total_revenue' => (clone $query)->sum('revenue') ?? 0,
         ];
 
+        $operatorServices = ArpuSubscription::select('id_operator', 'operator', 'id_service', 'service')
+            ->whereNotNull('id_operator')
+            ->whereNotNull('id_service')
+            ->distinct()
+            ->get()
+            ->groupBy('id_operator')
+            ->map(function ($items) {
+                $operatorName = $items->first()->operator;
+                $services = $items->map(function ($item) {
+                    return [
+                        'id_service' => $item->id_service,
+                        'service_name' => $item->service,
+                    ];
+                })->unique('id_service')->values()->toArray();
+
+                return [
+                    'id_operator' => $items->first()->id_operator,
+                    'operator_name' => $operatorName,
+                    'services' => $services,
+                ];
+            })->values()->toArray();
+
         $subscriptions = $query->latest()->paginate(10)->onEachSide(1)->withQueryString();
 
         return Inertia::render('arpu_subscriptions/index', [
             'subscriptions' => $subscriptions,
             'metrics' => $metrics,
+            'operatorServices' => $operatorServices,
         ]);
     }
 }
