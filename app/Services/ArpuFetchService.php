@@ -101,6 +101,11 @@ class ArpuFetchService
                     
                     $totalProcessed = count($subscriptions);
 
+                    // Clear the operator services cache so new operators show up in the dropdown
+                    if ($totalProcessed > 0) {
+                        \Illuminate\Support\Facades\Cache::forget('arpu_operator_services');
+                    }
+
                     return [
                         'success' => true,
                         'message' => "Successfully bulk upserted data. Processed: {$totalProcessed}",
