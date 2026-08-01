@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/layouts/DashboardLayout';
-import { Database, Search, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { Database, Search, ChevronLeft, ChevronRight, RefreshCw, Filter } from 'lucide-react';
 
 interface PaginationLink {
     url: string | null;
@@ -126,6 +126,9 @@ export default function Index({ subscriptions, metrics, operatorServices }: Page
     const [startDate, setStartDate] = useState(searchParams?.get('start_date') || '');
     const [endDate, setEndDate] = useState(searchParams?.get('end_date') || '');
 
+    const hasActiveFilters = Boolean(searchParams?.get('search') || searchParams?.get('id_operator') || searchParams?.get('id_service') || searchParams?.get('start_date') || searchParams?.get('end_date'));
+    const [showFilters, setShowFilters] = useState(hasActiveFilters);
+
     const handleSearch = () => {
         const params: any = {};
         if (searchQuery) params.search = searchQuery;
@@ -161,7 +164,31 @@ export default function Index({ subscriptions, metrics, operatorServices }: Page
                         </p>
                     </div>
                     
-                    <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={() => setShowFilters(!showFilters)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors border ${
+                                showFilters || hasActiveFilters 
+                                    ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                            }`}
+                        >
+                            <Filter size={16} />
+                            <span>Filter</span>
+                            {hasActiveFilters && (
+                                <span className="flex h-2 w-2 rounded-full bg-blue-600"></span>
+                            )}
+                        </button>
+                        <button className="hidden md:flex items-center gap-2 bg-[#10b981] hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm">
+                            <RefreshCw size={16} />
+                            <span>Sinkronisasi Data</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Filter Section */}
+                {showFilters && (
+                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex flex-wrap items-center gap-3">
                         <div className="relative flex-1 min-w-[130px]">
                             <input 
                                 type="date"
@@ -202,7 +229,7 @@ export default function Index({ subscriptions, metrics, operatorServices }: Page
                                 })) || []}
                             />
                         )}
-                        <div className="relative flex-1 md:w-56 min-w-[150px]">
+                        <div className="relative flex-1 min-w-[150px]">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                             <input 
                                 type="text" 
@@ -210,19 +237,15 @@ export default function Index({ subscriptions, metrics, operatorServices }: Page
                                 onChange={e => setSearchQuery(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && handleSearch()}
                                 placeholder="Cari MSISDN..." 
-                                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
+                                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none"
                             />
                         </div>
                         <button onClick={handleSearch} className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shrink-0 shadow-sm">
                             <Search size={16} />
-                            <span className="hidden sm:inline">Filter</span>
-                        </button>
-                        <button className="hidden md:flex items-center gap-2 bg-[#10b981] hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shrink-0 shadow-sm">
-                            <RefreshCw size={16} />
-                            <span>Sinkronisasi Data</span>
+                            <span>Terapkan Filter</span>
                         </button>
                     </div>
-                </div>
+                )}
 
                 {/* Metrics Summary */}
                 {metrics && (

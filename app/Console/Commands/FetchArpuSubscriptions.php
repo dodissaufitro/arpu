@@ -17,7 +17,7 @@ class FetchArpuSubscriptions extends Command
      *
      * @var string
      */
-    protected $signature = 'arpu:fetch';
+    protected $signature = 'arpu:fetch {--operator= : Filter by Operator ID} {--service= : Filter by Service ID}';
 
     /**
      * The console command description.
@@ -33,7 +33,22 @@ class FetchArpuSubscriptions extends Command
     {
         $this->info('Fetching ARPU subscriptions from Endpoint Configs (Daily Push)...');
 
-        $configs = EndpointConfig::where('date_mode', 'yesterday')->get();
+        $operatorId = $this->option('operator');
+        $serviceId = $this->option('service');
+
+        $query = EndpointConfig::where('date_mode', 'yesterday');
+
+        if ($operatorId) {
+            $query->where('operator', $operatorId);
+            $this->info("Filtering by Operator: {$operatorId}");
+        }
+
+        if ($serviceId) {
+            $query->where('id_service', $serviceId);
+            $this->info("Filtering by Service: {$serviceId}");
+        }
+
+        $configs = $query->get();
 
         if ($configs->isEmpty()) {
             $this->warn('No daily push configurations found.');
