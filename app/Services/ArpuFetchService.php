@@ -81,7 +81,7 @@ class ArpuFetchService
                         DB::table('arpu_subscriptions')->upsert(
                             $chunk,
                             ['msisdn', 'id_service', 'id_operator'],
-                            ['status', 'renewal_date', 'trxid', 'attempt_charging', 'success_billing']
+                            ['status', 'renewal_date', 'trxid', 'attempt_charging', 'success_billing', 'revenue']
                         );
                     }
 
@@ -90,7 +90,7 @@ class ArpuFetchService
                         DB::table('arpu_subscriptions')->upsert(
                             $chunk,
                             ['msisdn', 'id_service', 'id_operator'],
-                            ['status', 'unsubs_date', 'unsubs_from']
+                            ['status', 'unsubs_date', 'unsubs_from', 'revenue']
                         );
                     }
 
