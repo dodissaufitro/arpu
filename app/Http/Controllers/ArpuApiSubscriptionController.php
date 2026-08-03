@@ -43,11 +43,18 @@ class ArpuApiSubscriptionController extends Controller
         $cacheKey = 'arpu_api_metrics_' . md5(json_encode($filterParams));
 
         $metrics = \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function () use ($query) {
+            $stats = (clone $query)->selectRaw('
+                COUNT(*) as total_data,
+                SUM(CASE WHEN status = "1" THEN 1 ELSE 0 END) as total_active,
+                SUM(CASE WHEN status = "-1" THEN 1 ELSE 0 END) as total_inactive,
+                SUM(revenue) as total_revenue
+            ')->first();
+
             return [
-                'total_data' => (clone $query)->count(),
-                'total_active' => (clone $query)->where('status', '1')->count(),
-                'total_inactive' => (clone $query)->where('status', '-1')->count(),
-                'total_revenue' => (clone $query)->sum('revenue') ?? 0,
+                'total_data' => $stats->total_data ?? 0,
+                'total_active' => (int) ($stats->total_active ?? 0),
+                'total_inactive' => (int) ($stats->total_inactive ?? 0),
+                'total_revenue' => (float) ($stats->total_revenue ?? 0),
             ];
         });
 
