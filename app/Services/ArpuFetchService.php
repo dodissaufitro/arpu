@@ -112,30 +112,27 @@ class ArpuFetchService
                         ->first();
 
                     if ($existingArpu) {
-                        if ($existingArpu->status === $status && $existingArpu->renewal_date === $record->renewal_date) {
-                            // Skip update if identical
-                        } else {
-                            $updateData = [
-                                'attempt_charging' => $existingArpu->attempt_charging + 1,
-                            ];
-                            
-                            if ($existingArpu->status != $status) {
-                                $updateData['status'] = $status;
-                            }
-                            
-                            if ($existingArpu->renewal_date != $record->renewal_date) {
-                                $updateData['renewal_date'] = $record->renewal_date;
-                            }
-                            
-                            if ($new_revenue != 0) {
-                                $updateData['success_billing'] = $existingArpu->success_billing + 1;
-                            }
-
-                            DB::table('arpu_subscriptions')
-                                ->where('id', $existingArpu->id)
-                                ->update($updateData);
-                            $totalUpdated++;
+                        $updateData = [
+                            'attempt_charging' => $existingArpu->attempt_charging + 1,
+                            'revenue' => $existingArpu->revenue + $new_revenue,
+                        ];
+                        
+                        if ($existingArpu->status != $status) {
+                            $updateData['status'] = $status;
                         }
+                        
+                        if ($existingArpu->renewal_date != $record->renewal_date) {
+                            $updateData['renewal_date'] = $record->renewal_date;
+                        }
+                        
+                        if ($new_revenue != 0) {
+                            $updateData['success_billing'] = $existingArpu->success_billing + 1;
+                        }
+
+                        DB::table('arpu_subscriptions')
+                            ->where('id', $existingArpu->id)
+                            ->update($updateData);
+                        $totalUpdated++;
                     } else {
                         $arpuRecordData = (array)$record;
                         unset($arpuRecordData['id']);
