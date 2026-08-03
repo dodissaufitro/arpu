@@ -7,3 +7,7 @@
 0 0 * * * docker exec -it 8f31c8f9acf8 php /app/artisan arpu:fetch --operator=29
 
 0 0 * * * docker exec -it 8f31c8f9acf8 php /app/artisan arpu:fetch --operator=1 --service=2653
+
+0 1 * * * docker exec -it 8f31c8f9acf8 php /app/artisan arpu:fetch --date=2026-08-01
+
+0 2 * * * docker exec -it 8f31c8f9acf8 php /app/artisan arpu:sync-staging

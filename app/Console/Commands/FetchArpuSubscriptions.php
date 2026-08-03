@@ -17,7 +17,7 @@ class FetchArpuSubscriptions extends Command
      *
      * @var string
      */
-    protected $signature = 'arpu:fetch {--operator= : Filter by Operator ID} {--service= : Filter by Service ID}';
+    protected $signature = 'arpu:fetch {--operator= : Filter by Operator ID} {--service= : Filter by Service ID} {--date= : Specific date to fetch (Y-m-d)}';
 
     /**
      * The console command description.
@@ -55,7 +55,7 @@ class FetchArpuSubscriptions extends Command
             return;
         }
 
-        $targetDateStr = Carbon::yesterday()->format('Y-m-d');
+        $targetDateStr = $this->option('date') ?: Carbon::yesterday()->format('Y-m-d');
         $this->info("Target Date: {$targetDateStr}");
 
         $this->withProgressBar($configs, function ($config) use ($arpuFetchService, $targetDateStr) {
