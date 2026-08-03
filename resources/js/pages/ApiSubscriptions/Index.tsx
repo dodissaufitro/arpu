@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { Database, Search, ChevronLeft, ChevronRight, RefreshCw, Filter } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 interface PaginationLink {
     url: string | null;
@@ -10,10 +9,10 @@ interface PaginationLink {
     active: boolean;
 }
 
-interface ArpuSubscription {
+interface ArpuApiSubscription {
     id: number;
     country: string;
-    operator: string;
+    operator_name: string;
     id_operator: string;
     id_service: string;
     service: string;
@@ -44,7 +43,7 @@ interface ArpuSubscription {
 
 interface PageProps {
     subscriptions: {
-        data: ArpuSubscription[];
+        data: ArpuApiSubscription[];
         links: PaginationLink[];
         current_page: number;
         last_page: number;
@@ -75,6 +74,8 @@ interface PageProps {
         }[];
     }[];
 }
+
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 const SearchableSelect = ({ value, onChange, options, placeholder }: { value: string, onChange: (val: string) => void, options: {value: string, label: string}[], placeholder: string }) => {
     const [query, setQuery] = useState('');
@@ -137,7 +138,6 @@ export default function Index({ subscriptions, metrics, operatorServices, endpoi
 
     const hasActiveFilters = Boolean(searchParams?.get('search') || searchParams?.get('id_operator') || searchParams?.get('id_service') || searchParams?.get('start_date') || searchParams?.get('end_date'));
     const [showFilters, setShowFilters] = useState(hasActiveFilters);
-    const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
 
     const handleSearch = () => {
         const params: any = {};
@@ -147,23 +147,28 @@ export default function Index({ subscriptions, metrics, operatorServices, endpoi
         if (startDate) params.start_date = startDate;
         if (endDate) params.end_date = endDate;
 
-        router.get(route('arpu_subscriptions.index'), params, {
+        router.get(route('api_subscriptions.index'), params, {
             preserveState: true,
             replace: true,
         });
     };
 
     const [isSyncing, setIsSyncing] = useState(false);
-    const [syncData, setSyncData] = useState({ operator: '', id_service: '', date: '' });
+    const [syncModalOpen, setSyncModalOpen] = useState(false);
+    const [syncData, setSyncData] = useState({
+        operator: '',
+        id_service: '',
+        date: ''
+    });
 
     const handleSync = (e: React.FormEvent) => {
         e.preventDefault();
         setIsSyncing(true);
-        router.post(route('arpu_subscriptions.sync'), syncData as any, {
+        router.post(route('api_subscriptions.sync'), syncData, {
             preserveScroll: true,
             onSuccess: () => {
                 setIsSyncing(false);
-                setIsSyncModalOpen(false);
+                setSyncModalOpen(false);
                 setSyncData({ operator: '', id_service: '', date: '' });
             },
             onError: () => {
@@ -181,7 +186,7 @@ export default function Index({ subscriptions, metrics, operatorServices, endpoi
 
     return (
         <DashboardLayout>
-            <Head title="ARPU Subscriptions" />
+            <Head title="API Subscriptions" />
             
             <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col h-full">
                 {/* Header */}
@@ -189,7 +194,7 @@ export default function Index({ subscriptions, metrics, operatorServices, endpoi
                     <div>
                         <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                             <Database size={20} className="text-[#1a56db]" />
-                            Data ARPU Subscriptions
+                            Data API Subscriptions
                         </h2>
                         <p className="text-sm text-slate-500 mt-1">
                             Menampilkan {subscriptions?.from || 0} - {subscriptions?.to || 0} dari total {subscriptions?.total || 0} data
@@ -211,16 +216,83 @@ export default function Index({ subscriptions, metrics, operatorServices, endpoi
                                 <span className="flex h-2 w-2 rounded-full bg-blue-600"></span>
                             )}
                         </button>
-                        <button 
-                            onClick={handleSync}
-                            disabled={isSyncing}
-                            className={`hidden md:flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm ${
-                                isSyncing ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-[#10b981] hover:bg-emerald-600 text-white'
-                            }`}
-                        >
-                            <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
-                            <span>{isSyncing ? 'Memproses Data...' : 'Sinkronisasi Data'}</span>
-                        </button>
+                        <Dialog open={syncModalOpen} onOpenChange={setSyncModalOpen}>
+                            <DialogTrigger asChild>
+                                <button 
+                                    className={`hidden md:flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm bg-[#10b981] hover:bg-emerald-600 text-white`}
+                                >
+                                    <RefreshCw size={16} />
+                                    <span>Sinkronisasi Data API</span>
+                                </button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Sinkronisasi Data API</DialogTitle>
+                                    <DialogDescription>Masukkan parameter untuk mengambil data dari API.</DialogDescription>
+                                </DialogHeader>
+                                <form onSubmit={handleSync} className="space-y-4 py-2">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Operator</label>
+                                        <select 
+                                            value={syncData.operator}
+                                            onChange={e => setSyncData({...syncData, operator: e.target.value, id_service: ''})}
+                                            required
+                                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none text-slate-700"
+                                        >
+                                            <option value="" disabled>Pilih Operator</option>
+                                            {endpointConfigs?.map(op => (
+                                                <option key={op.operator} value={op.operator}>
+                                                    {op.operator_name ? `${op.operator_name} (${op.operator})` : op.operator}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">ID Service</label>
+                                        <select 
+                                            value={syncData.id_service}
+                                            onChange={e => setSyncData({...syncData, id_service: e.target.value})}
+                                            required
+                                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none text-slate-700"
+                                        >
+                                            <option value="" disabled>Pilih ID Service</option>
+                                            {syncData.operator && endpointConfigs?.find(op => String(op.operator) === String(syncData.operator))?.services.map(svc => (
+                                                <option key={svc.id_service} value={svc.id_service}>
+                                                    {svc.service_name ? `${svc.service_name} (${svc.id_service})` : svc.id_service}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
+                                        <input 
+                                            type="date" 
+                                            value={syncData.date}
+                                            onChange={e => setSyncData({...syncData, date: e.target.value})}
+                                            required
+                                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none text-slate-700"
+                                        />
+                                    </div>
+                                    <DialogFooter className="mt-4">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setSyncModalOpen(false)}
+                                            className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                                        >
+                                            Batal
+                                        </button>
+                                        <button 
+                                            type="submit" 
+                                            disabled={isSyncing}
+                                            className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2 transition-colors"
+                                        >
+                                            {isSyncing ? <RefreshCw size={16} className="animate-spin" /> : null}
+                                            <span>{isSyncing ? 'Menyinkronkan...' : 'Sinkronisasi'}</span>
+                                        </button>
+                                    </DialogFooter>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 </div>
 
@@ -340,7 +412,7 @@ export default function Index({ subscriptions, metrics, operatorServices, endpoi
                                     <tr key={sub.id} className="hover:bg-blue-50/50 transition-colors group">
                                         <td className="py-3 px-6 text-sm text-slate-500 font-medium whitespace-nowrap">{sub.id}</td>
                                         <td className="py-3 px-6 text-sm font-semibold text-slate-700 whitespace-nowrap">{sub.msisdn || '-'}</td>
-                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.operator || sub.id_operator || '-'}</td>
+                                        <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.operator_name || sub.id_operator || '-'}</td>
                                         <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.service || sub.id_service || '-'}</td>
                                         <td className="py-3 px-6 text-sm text-slate-600 whitespace-nowrap">{sub.keyword || '-'}</td>
                                         <td className="py-3 px-6 text-center whitespace-nowrap">
@@ -366,7 +438,7 @@ export default function Index({ subscriptions, metrics, operatorServices, endpoi
                                             {hasActiveFilters ? (
                                                 <p className="text-sm font-medium">Data tidak ditemukan dengan filter tersebut</p>
                                             ) : (
-                                                <p className="text-sm font-medium">Silakan pilih dan terapkan filter untuk menampilkan data</p>
+                                                <p className="text-sm font-medium">Data kosong</p>
                                             )}
                                         </div>
                                     </td>

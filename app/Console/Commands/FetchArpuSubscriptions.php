@@ -60,7 +60,7 @@ class FetchArpuSubscriptions extends Command
 
         $this->withProgressBar($configs, function ($config) use ($arpuFetchService, $targetDateStr) {
             try {
-                $result = $arpuFetchService->fetchAndSync(
+                $result = $arpuFetchService->downloadData(
                     $config->operator,
                     $config->id_service,
                     $targetDateStr
@@ -78,18 +78,31 @@ class FetchArpuSubscriptions extends Command
                     ]);
                 }
             } catch (\Exception $e) {
-                $this->error("\nFailed to process Operator: {$config->operator}, Service: {$config->id_service} - " . $e->getMessage());
+                $this->error("\nFailed to download Operator: {$config->operator}, Service: {$config->id_service} - " . $e->getMessage());
                 $config->update([
                     'last_run_at' => Carbon::now(),
                     'status' => 'failed',
                 ]);
             }
 
-            // Jeda 2 detik sebelum memanggil API berikutnya agar tidak membebani server target
-            sleep(2);
+            // Jeda 1 detik agar tidak membebani API
+            sleep(1);
         });
 
         $this->newLine(2);
-        $this->info('Daily push completed!');
+        $this->info('Semua data berhasil di-download ke tabel antrean (staging).');
+        
+        $this->info('Mulai sinkronisasi dari tabel antrean ke tabel utama...');
+        
+        $syncResult = $arpuFetchService->processStagingData();
+        
+        if ($syncResult['success']) {
+            $this->info($syncResult['message']);
+        } else {
+            $this->error($syncResult['message']);
+        }
+
+        $this->newLine();
+        $this->info('Proses otomatisasi (Download & Sync) selesai sepenuhnya!');
     }
 }

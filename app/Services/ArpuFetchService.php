@@ -10,16 +10,12 @@ use Illuminate\Support\Facades\Log;
 class ArpuFetchService
 {
     /**
-     * Fetch ARPU data for a specific operator, service, and date.
-     * 
-     * @param int $operator
-     * @param int $idService
-     * @param string $date
-     * @return array ['success' => bool, 'message' => string, 'inserted' => int, 'updated' => int]
+     * Download ARPU data from API and store in staging table.
      */
-    public function fetchAndSync($operator, $idService, $date)
+    public function downloadData($operator, $idService, $date)
     {
-        $url = "http://149.129.252.221/app/filetest/send_arpu_subs.php?operator={$operator}&id_service={$idService}&date={$date}";
+        $baseUrl = env('ENDPOINT_API_SUBSCRIPTION', 'http://149.129.252.221/app/filetest/dataarpu/api_subscription.php');
+        $url = "{$baseUrl}?operator={$operator}&id_service={$idService}&date={$date}";
 
         try {
             $response = Http::get($url);
@@ -30,14 +26,13 @@ class ArpuFetchService
                 if (isset($data['status']) && $data['status'] === 'success' && isset($data['data'])) {
                     $subscriptions = $data['data'];
                     $totalInserted = 0;
-                    $totalUpdated = 0;
 
                     foreach ($subscriptions as $subscription) {
                         $recordData = [
                             'country' => $subscription['country'] ?? null,
-                            'operator' => $subscription['operator_name'] ?? null,
-                            'id_service' => $subscription['id_service'] ?? null,
+                            'operator_name' => $subscription['operator_name'] ?? null,
                             'id_operator' => $subscription['id_operator'] ?? null,
+                            'id_service' => $subscription['id_service'] ?? null,
                             'service' => $subscription['service'] ?? null,
                             'keyword' => $subscription['keyword'] ?? 'NA',
                             'source' => $subscription['source'] ?? 'NA',
@@ -45,7 +40,7 @@ class ArpuFetchService
                             'status' => $subscription['status'] ?? null,
                             'cycle' => $subscription['cycle'] ?? 'daily',
                             'adnet' => $subscription['adnet'] ?? null,
-                            'revenue' => isset($subscription['revenue']) ? (float)$subscription['revenue'] : null,
+                            'revenue' => isset($subscription['revenue']) ? (float)$subscription['revenue'] : 0,
                             'subs_date' => $subscription['subs_date'] ?? null,
                             'renewal_date' => $subscription['renewal_date'] ?? null,
                             'freemium_end_date' => $subscription['freemium_end_date'] ?? null,
@@ -64,72 +59,127 @@ class ArpuFetchService
                             'created_at' => isset($subscription['created_at']) ? Carbon::parse($subscription['created_at']) : Carbon::now(),
                         ];
 
-                        $existingRecord = DB::table('arpu_subscriptions')
-                            ->where('msisdn', $subscription['msisdn'])
-                            ->where('id_service', $subscription['id_service'])
-                            ->where('id_operator', $subscription['id_operator'])
-                            ->first();
-
-                        if ($existingRecord) {
-                            $updateData = [];
-                            $incomingStatus = $subscription['status'] ?? null;
-                            
-                            if ($incomingStatus == 1) {
-                                $updateData = [
-                                    'status' => 1,
-                                    'renewal_date' => $subscription['renewal_date'] ?? null,
-                                    'trxid' => $subscription['trxid'] ?? 'NA',
-                                    'attempt_charging' => $subscription['attempt_charging'] ?? 0,
-                                    'success_billing' => $subscription['success_billing'] ?? 0,
-                                    'service_price' => isset($subscription['service_price']) ? (float)$subscription['service_price'] : null,
-                                ];
-                            } elseif ($incomingStatus == -1) {
-                                $updateData = [
-                                    'status' => -1,
-                                    'unsubs_date' => $subscription['unsubs_date'] ?? null,
-                                    'unsubs_from' => $subscription['unsubs_from'] ?? 'sms',
-                                    'service_price' => isset($subscription['service_price']) ? (float)$subscription['service_price'] : null,
-                                ];
-                            }
-
-                            if (!empty($updateData)) {
-                                DB::table('arpu_subscriptions')
-                                    ->where('id', $existingRecord->id)
-                                    ->update($updateData);
-                                $totalUpdated++;
-                            }
-                        } else {
-                            DB::table('arpu_subscriptions')->insert($recordData);
-                            $totalInserted++;
-                        }
-                    }
-                    if ($totalInserted > 0 || $totalUpdated > 0) {
-                        \Illuminate\Support\Facades\Cache::forget('arpu_operator_services');
+                        DB::table('arpu_api_subscriptions')->insert($recordData);
+                        $totalInserted++;
                     }
 
                     return [
                         'success' => true,
-                        'message' => "Successfully fetched data. Inserted: {$totalInserted} | Updated: {$totalUpdated}",
-                        'inserted' => $totalInserted,
-                        'updated' => $totalUpdated,
-                    ];
-                } else {
-                    return [
-                        'success' => false,
-                        'message' => 'API response format is invalid or status is not success.',
+                        'message' => "Successfully downloaded {$totalInserted} records to staging.",
                     ];
                 }
-            } else {
+                return ['success' => false, 'message' => 'API response format is invalid.'];
+            }
+            return ['success' => false, 'message' => 'Failed to call API: HTTP ' . $response->status()];
+        } catch (\Exception $e) {
+            Log::error('ArpuFetchService Download Error: ' . $e->getMessage());
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Process all data from staging to main table and delete staging rows.
+     */
+    public function processStagingData()
+    {
+        try {
+            $totalInserted = 0;
+            $totalUpdated = 0;
+            
+            $hasRecords = DB::table('arpu_api_subscriptions')->exists();
+            
+            if (!$hasRecords) {
                 return [
-                    'success' => false,
-                    'message' => 'Failed to fetch data from API. HTTP Status: ' . $response->status(),
+                    'success' => true,
+                    'message' => 'Tidak ada data staging yang perlu diproses.',
+                    'inserted' => 0,
+                    'updated' => 0
                 ];
             }
+
+            DB::table('arpu_api_subscriptions')->orderBy('id')->chunkById(1000, function ($stagedRecords) use (&$totalInserted, &$totalUpdated) {
+                foreach ($stagedRecords as $record) {
+                    $msisdn = $record->msisdn;
+                    $id_operator = $record->id_operator;
+                    $id_service = $record->id_service;
+                    $status = $record->status;
+                    $new_revenue = $record->revenue ? (float)$record->revenue : 0;
+
+                    $existingArpu = DB::table('arpu_subscriptions')
+                        ->where('msisdn', $msisdn)
+                        ->where('id_operator', $id_operator)
+                        ->where('id_service', $id_service)
+                        ->first();
+
+                    if ($existingArpu) {
+                        if ($existingArpu->status === $status && $existingArpu->renewal_date === $record->renewal_date) {
+                            // Skip update if identical
+                        } else {
+                            $updateData = [
+                                'attempt_charging' => $existingArpu->attempt_charging + 1,
+                            ];
+                            
+                            if ($existingArpu->status != $status) {
+                                $updateData['status'] = $status;
+                            }
+                            
+                            if ($existingArpu->renewal_date != $record->renewal_date) {
+                                $updateData['renewal_date'] = $record->renewal_date;
+                            }
+                            
+                            if ($new_revenue != 0) {
+                                $updateData['success_billing'] = $existingArpu->success_billing + 1;
+                            }
+
+                            DB::table('arpu_subscriptions')
+                                ->where('id', $existingArpu->id)
+                                ->update($updateData);
+                            $totalUpdated++;
+                        }
+                    } else {
+                        $arpuRecordData = (array)$record;
+                        unset($arpuRecordData['id']);
+                        
+                        // arpu_subscriptions table does not have updated_at column
+                        if (array_key_exists('updated_at', $arpuRecordData)) {
+                            unset($arpuRecordData['updated_at']);
+                        }
+                        
+                        if (isset($arpuRecordData['operator_name'])) {
+                            $arpuRecordData['operator'] = $arpuRecordData['operator_name'];
+                            unset($arpuRecordData['operator_name']);
+                        }
+                        
+                        $arpuRecordData['attempt_charging'] = 1;
+                        $arpuRecordData['success_billing'] = ($new_revenue != 0) ? 1 : 0;
+
+                        DB::table('arpu_subscriptions')->insert($arpuRecordData);
+                        $totalInserted++;
+                    }
+
+                    DB::table('arpu_api_subscriptions')->where('id', $record->id)->delete();
+                }
+            });
+            
+            if ($totalInserted > 0 || $totalUpdated > 0) {
+                \Illuminate\Support\Facades\Cache::forget('arpu_operator_services');
+                \Illuminate\Support\Facades\Artisan::call('cache:clear');
+            }
+
+            return [
+                'success' => true,
+                'message' => "Proses sinkronisasi selesai. Inserted: {$totalInserted}, Updated: {$totalUpdated}",
+                'inserted' => $totalInserted,
+                'updated' => $totalUpdated
+            ];
+            
         } catch (\Exception $e) {
-            Log::error('ArpuFetchService error: ' . $e->getMessage());
+            Log::error('ARPU Sync Error: ' . $e->getMessage());
             return [
                 'success' => false,
-                'message' => 'An error occurred: ' . $e->getMessage(),
+                'message' => 'Terjadi kesalahan sistem saat sinkronisasi: ' . $e->getMessage(),
+                'inserted' => 0,
+                'updated' => 0
             ];
         }
     }

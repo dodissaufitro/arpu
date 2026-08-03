@@ -4,15 +4,15 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use App\Models\ArpuSubscription;
+use App\Models\ArpuApiSubscription;
 
-class ArpuSubscriptionController extends Controller
+class ArpuApiSubscriptionController extends Controller
 {
     public function index(Request $request)
     {
         $hasFilters = $request->filled('search') || $request->filled('id_operator') || $request->filled('id_service') || $request->filled('start_date') || $request->filled('end_date');
 
-        $query = ArpuSubscription::query();
+        $query = ArpuApiSubscription::query();
 
         if (!$hasFilters) {
             // Return empty query if no filters applied to save load
@@ -40,7 +40,7 @@ class ArpuSubscriptionController extends Controller
         }
 
         $filterParams = $request->except('page');
-        $cacheKey = 'arpu_metrics_' . md5(json_encode($filterParams));
+        $cacheKey = 'arpu_api_metrics_' . md5(json_encode($filterParams));
 
         $metrics = \Illuminate\Support\Facades\Cache::remember($cacheKey, 300, function () use ($query) {
             return [
@@ -51,15 +51,15 @@ class ArpuSubscriptionController extends Controller
             ];
         });
 
-        $operatorServices = \Illuminate\Support\Facades\Cache::remember('arpu_operator_services', 86400, function () {
-            return ArpuSubscription::select('id_operator', 'operator', 'id_service', 'service')
+        $operatorServices = \Illuminate\Support\Facades\Cache::remember('arpu_api_operator_services', 86400, function () {
+            return ArpuApiSubscription::select('id_operator', 'operator_name', 'id_service', 'service')
                 ->whereNotNull('id_operator')
                 ->whereNotNull('id_service')
                 ->distinct()
                 ->get()
                 ->groupBy('id_operator')
                 ->map(function ($items) {
-                    $operatorName = $items->first()->operator;
+                    $operatorName = $items->first()->operator_name;
                     $services = $items->map(function ($item) {
                         return [
                             'id_service' => $item->id_service,
@@ -75,7 +75,7 @@ class ArpuSubscriptionController extends Controller
                 })->values()->toArray();
         });
 
-        $endpointConfigs = \Illuminate\Support\Facades\Cache::remember('arpu_endpoint_configs_list', 60, function () {
+        $endpointConfigs = \Illuminate\Support\Facades\Cache::remember('arpu_api_endpoint_configs_list', 60, function () {
             return \App\Models\EndpointConfig::where('date_mode', 'yesterday')
                 ->select('operator', 'operator_name', 'id_service', 'service_name')
                 ->distinct()
@@ -100,7 +100,7 @@ class ArpuSubscriptionController extends Controller
 
         $subscriptions = $query->latest()->paginate(25)->onEachSide(1)->withQueryString();
 
-        return Inertia::render('arpu_subscriptions/index', [
+        return Inertia::render('ApiSubscriptions/Index', [
             'subscriptions' => $subscriptions,
             'metrics' => $metrics,
             'operatorServices' => $operatorServices,
@@ -110,22 +110,47 @@ class ArpuSubscriptionController extends Controller
 
     public function sync(Request $request, \App\Services\ArpuFetchService $arpuFetchService)
     {
+        $request->validate([
+            'operator' => 'required',
+            'id_service' => 'required',
+            'date' => 'required|date'
+        ]);
+
         set_time_limit(0);
         
+        $operator = $request->input('operator');
+        $idService = $request->input('id_service');
+        $date = $request->input('date');
+
+        // Check if operator and id_service exist in daily_push (EndpointConfig with date_mode = yesterday)
+        $existsInDailyPush = \App\Models\EndpointConfig::where('date_mode', 'yesterday')
+            ->where('operator', $operator)
+            ->where('id_service', $idService)
+            ->exists();
+
+        if (!$existsInDailyPush) {
+            return back()->with('error', "Sinkronisasi dibatalkan: Operator {$operator} dan ID Service {$idService} tidak terdaftar di Daily Push.");
+        }
+
         try {
+            // Tahap 1: Download data ke staging (arpu_api_subscriptions)
+            $downloadResult = $arpuFetchService->downloadData($operator, $idService, $date);
+
+            if (!$downloadResult['success']) {
+                return back()->with('error', $downloadResult['message']);
+            }
+
+            // Tahap 2: Sinkronisasi dari staging ke tabel utama (arpu_subscriptions) menggunakan logika terpusat
             $syncResult = $arpuFetchService->processStagingData();
 
             if ($syncResult['success']) {
-                if ($syncResult['inserted'] == 0 && $syncResult['updated'] == 0) {
-                    return back()->with('info', $syncResult['message']);
-                }
-                return back()->with('success', $syncResult['message']);
+                return back()->with('success', "Proses Sinkronisasi untuk Operator {$operator} / Service {$idService} Selesai! " . $syncResult['message']);
             } else {
                 return back()->with('error', $syncResult['message']);
             }
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('ARPU Sync Route Error: ' . $e->getMessage());
-            return back()->with('error', 'Terjadi kesalahan sistem saat sinkronisasi: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('API Fetch Error: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
         }
     }
 }

@@ -16,6 +16,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('arpu-subscriptions', [\App\Http\Controllers\ArpuSubscriptionController::class, 'index'])->name('arpu_subscriptions.index')->middleware('permission:arpu.view');
     Route::post('arpu-subscriptions/sync', [\App\Http\Controllers\ArpuSubscriptionController::class, 'sync'])->name('arpu_subscriptions.sync')->middleware('permission:arpu.view');
+    Route::get('api-subscriptions', [\App\Http\Controllers\ArpuApiSubscriptionController::class, 'index'])->name('api_subscriptions.index')->middleware('permission:arpu.view');
+    Route::post('api-subscriptions/sync', [\App\Http\Controllers\ArpuApiSubscriptionController::class, 'sync'])->name('api_subscriptions.sync')->middleware('permission:arpu.view');
 
     Route::middleware('permission:tokens.view')->group(function () {
         Route::get('api-tokens', [\App\Http\Controllers\ApiTokenController::class, 'index'])->name('api_tokens.index');
@@ -70,8 +72,9 @@ Route::middleware(['auth'])->group(function () {
         $bulan = $request->query('bulan', '');
         $hari = $request->query('hari', '');
 
+        $baseUrl = env('ENDPOINT_STATISTICS_API', 'http://dev_verifikator.test/api/data-pemohon/count-rekap-semua-tahap');
         $response = \Illuminate\Support\Facades\Http::withToken('57|iZEjvoRSBd9w5fvMmWn5BMzBWKIeV8kNqVdoOADAe41f97c3')
-            ->get("http://dev_verifikator.test/api/data-pemohon/count-rekap-semua-tahap?lokasi={$lokasiId}&bank={$bankId}&tahun={$tahun}&bulan={$bulan}&hari={$hari}");
+            ->get("{$baseUrl}?lokasi={$lokasiId}&bank={$bankId}&tahun={$tahun}&bulan={$bulan}&hari={$hari}");
 
         $apiData = $response->json();
 

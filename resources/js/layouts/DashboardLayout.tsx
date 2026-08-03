@@ -43,6 +43,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             {hasPermission('arpu.view') && (
                                 <NavItem icon={<Database size={18} />} text="ARPU Subscriptions" href="/arpu-subscriptions" />
                             )}
+                            {hasPermission('arpu.view') && (
+                                <NavItem icon={<Database size={18} />} text="API Subscriptions" href="/api-subscriptions" />
+                            )}
                             {hasPermission('tokens.view') && (
                                 <NavItem icon={<Shield size={18} />} text="API Tokens" href="/api-tokens" />
                             )}
