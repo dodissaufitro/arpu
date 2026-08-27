@@ -10,15 +10,32 @@ use Illuminate\Support\Facades\Log;
 class ArpuFetchService
 {
     /**
+     * Download and process staging data.
+     */
+    public function fetchAndSync($operator, $idService, $date)
+    {
+        $downloadResult = $this->downloadData($operator, $idService, $date);
+        if (!$downloadResult['success']) {
+            return $downloadResult;
+        }
+
+        return $this->processStagingData();
+    }
+
+    /**
      * Download ARPU data from API and store in staging table.
      */
     public function downloadData($operator, $idService, $date)
     {
         $baseUrl = env('ENDPOINT_API_SUBSCRIPTION', 'http://149.129.252.221/app/filetest/dataarpu/api_subscription.php');
-        $url = "{$baseUrl}?operator={$operator}&id_service={$idService}&date={$date}";
 
         try {
-            $response = Http::get($url);
+            $response = Http::timeout(180)->get($baseUrl, [
+                'operator' => $operator,
+                'id_service' => $idService,
+                'date' => $date,
+            ]);
+
 
             if ($response->successful()) {
                 $data = $response->json();
