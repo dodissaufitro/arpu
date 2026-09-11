@@ -58,30 +58,6 @@ class ArpuApiSubscriptionController extends Controller
             ];
         });
 
-        $operatorServices = \Illuminate\Support\Facades\Cache::remember('arpu_api_operator_services', 86400, function () {
-            return ArpuApiSubscription::select('id_operator', 'operator_name', 'id_service', 'service')
-                ->whereNotNull('id_operator')
-                ->whereNotNull('id_service')
-                ->distinct()
-                ->get()
-                ->groupBy('id_operator')
-                ->map(function ($items) {
-                    $operatorName = $items->first()->operator_name;
-                    $services = $items->map(function ($item) {
-                        return [
-                            'id_service' => $item->id_service,
-                            'service_name' => $item->service,
-                        ];
-                    })->unique('id_service')->values()->toArray();
-
-                    return [
-                        'id_operator' => $items->first()->id_operator,
-                        'operator_name' => $operatorName,
-                        'services' => $services,
-                    ];
-                })->values()->toArray();
-        });
-
         $endpointConfigs = \Illuminate\Support\Facades\Cache::remember('arpu_api_endpoint_configs_list', 60, function () {
             return \App\Models\EndpointConfig::where('date_mode', 'yesterday')
                 ->select('operator', 'operator_name', 'id_service', 'service_name')
@@ -110,7 +86,6 @@ class ArpuApiSubscriptionController extends Controller
         return Inertia::render('ApiSubscriptions/Index', [
             'subscriptions' => $subscriptions,
             'metrics' => $metrics,
-            'operatorServices' => $operatorServices,
             'endpointConfigs' => $endpointConfigs,
         ]);
     }
@@ -139,16 +114,18 @@ class ArpuApiSubscriptionController extends Controller
             return back()->with('error', "Sinkronisasi dibatalkan: Operator {$operator} dan ID Service {$idService} tidak terdaftar di Daily Push.");
         }
 
+        $force = $request->boolean('force');
+
         try {
             // Tahap 1: Download data ke staging (arpu_api_subscriptions)
-            $downloadResult = $arpuFetchService->downloadData($operator, $idService, $date);
+            $downloadResult = $arpuFetchService->downloadData($operator, $idService, $date, $force);
 
             if (!$downloadResult['success']) {
                 return back()->with('error', $downloadResult['message']);
             }
 
             // Tahap 2: Sinkronisasi dari staging ke tabel utama (arpu_subscriptions) menggunakan logika terpusat
-            $syncResult = $arpuFetchService->processStagingData();
+            $syncResult = $arpuFetchService->processStagingData($operator, $idService, $date);
 
             if ($syncResult['success']) {
                 return back()->with('success', "Proses Sinkronisasi untuk Operator {$operator} / Service {$idService} Selesai! " . $syncResult['message']);

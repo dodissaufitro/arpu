@@ -17,7 +17,7 @@ class FetchArpuSubscriptions extends Command
      *
      * @var string
      */
-    protected $signature = 'arpu:fetch {--operator= : Filter by Operator ID} {--service= : Filter by Service ID} {--date= : Specific date to fetch (Y-m-d)}';
+    protected $signature = 'arpu:fetch {--operator= : Filter by Operator ID} {--service= : Filter by Service ID} {--date= : Specific date to fetch (Y-m-d)} {--force : Force fetch even if already synced}';
 
     /**
      * The console command description.
@@ -35,6 +35,7 @@ class FetchArpuSubscriptions extends Command
 
         $operatorId = $this->option('operator');
         $serviceId = $this->option('service');
+        $force = (bool) $this->option('force');
 
         $query = EndpointConfig::where('date_mode', 'yesterday');
 
@@ -57,21 +58,31 @@ class FetchArpuSubscriptions extends Command
 
         $targetDateStr = $this->option('date') ?: Carbon::yesterday()->format('Y-m-d');
         $this->info("Target Date: {$targetDateStr}");
+        if ($force) {
+            $this->warn("Mode Force: Mengabaikan proteksi duplikasi log.");
+        }
 
-        $this->withProgressBar($configs, function ($config) use ($arpuFetchService, $targetDateStr) {
+        $successfulConfigs = [];
+
+        $this->withProgressBar($configs, function ($config) use ($arpuFetchService, $targetDateStr, $force, &$successfulConfigs) {
             try {
                 $result = $arpuFetchService->downloadData(
                     $config->operator,
                     $config->id_service,
-                    $targetDateStr
+                    $targetDateStr,
+                    $force
                 );
 
                 if ($result['success']) {
+                    $successfulConfigs[] = $config;
                     $config->update([
                         'last_run_at' => Carbon::now(),
                         'status' => 'success',
                     ]);
+                } elseif ($result['is_duplicate'] ?? false) {
+                    $this->warn("\nSkipped Operator: {$config->operator}, Service: {$config->id_service} - " . $result['message']);
                 } else {
+                    $this->error("\nFailed to download Operator: {$config->operator}, Service: {$config->id_service} - " . $result['message']);
                     $config->update([
                         'last_run_at' => Carbon::now(),
                         'status' => 'failed',
@@ -98,6 +109,17 @@ class FetchArpuSubscriptions extends Command
         
         if ($syncResult['success']) {
             $this->info($syncResult['message']);
+            foreach ($successfulConfigs as $sc) {
+                $arpuFetchService->recordSyncLog(
+                    $sc->operator,
+                    $sc->id_service,
+                    $targetDateStr,
+                    0,
+                    0,
+                    'success',
+                    'Auto fetched via CLI command'
+                );
+            }
         } else {
             $this->error($syncResult['message']);
         }

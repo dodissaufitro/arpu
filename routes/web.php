@@ -134,6 +134,25 @@ Route::middleware(['auth'])->group(function () {
             'plainTextToken' => $token->plainTextToken
         ]);
     })->name('tokens.store');
+    Route::get('test-api-hit', function (\Illuminate\Http\Request $request) {
+        $operator = $request->query('operator', 1);
+        $idService = $request->query('id_service', 4271); // Ganti dengan ID Service default yang diinginkan
+        $date = $request->query('date', '2026-08-02');
+        
+        $baseUrl = env('ENDPOINT_API_SUBSCRIPTION', 'http://149.129.252.221/app/filetest/dataarpu/api_subscription.php');
+        
+        $response = \Illuminate\Support\Facades\Http::timeout(180)->get($baseUrl, [
+            'operator' => $operator,
+            'id_service' => $idService,
+            'date' => $date,
+        ]);
+        
+        return response()->json([
+            'http_status_code' => $response->status(),
+            'is_successful' => $response->successful(),
+            'api_response' => $response->json()
+        ]);
+    });
 });
 
 require __DIR__.'/settings.php';

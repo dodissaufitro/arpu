@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\ArpuSubscription;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -32,10 +33,8 @@ class DashboardController extends Controller
             $query->where('adnet', 'like', '%' . $request->adnet . '%');
         }
 
-        $chartQuery = clone $query;
-
         // Group by Date
-        $revenueByDate = (clone $chartQuery)
+        $revenueByDate = (clone $query)
             ->selectRaw('DATE(subs_date) as label, SUM(revenue) as value')
             ->whereNotNull('subs_date')
             ->groupBy('label')
@@ -43,7 +42,7 @@ class DashboardController extends Controller
             ->get();
 
         // Group by Operator
-        $revenueByOperator = (clone $chartQuery)
+        $revenueByOperator = (clone $query)
             ->selectRaw('operator as label, SUM(revenue) as value')
             ->whereNotNull('operator')
             ->groupBy('label')
@@ -51,7 +50,7 @@ class DashboardController extends Controller
             ->get();
 
         // Group by Service
-        $revenueByService = (clone $chartQuery)
+        $revenueByService = (clone $query)
             ->selectRaw('service as label, SUM(revenue) as value')
             ->whereNotNull('service')
             ->groupBy('label')
@@ -59,12 +58,13 @@ class DashboardController extends Controller
             ->get();
 
         // Group by AdNet
-        $revenueByAdnet = (clone $chartQuery)
+        $revenueByAdnet = (clone $query)
             ->selectRaw('adnet as label, SUM(revenue) as value')
             ->whereNotNull('adnet')
             ->groupBy('label')
             ->orderByDesc('value')
             ->get();
+
 
         // Dashboard Metrics
         $totalData = (clone $query)->count();

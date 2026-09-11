@@ -58,14 +58,7 @@ interface PageProps {
         total_inactive: number;
         total_revenue: number;
     };
-    operatorServices?: {
-        id_operator: string;
-        operator_name: string;
-        services: {
-            id_service: string;
-            service_name: string;
-        }[];
-    }[];
+    // operatorServices removed
     endpointConfigs?: {
         operator: number;
         operator_name: string;
@@ -127,7 +120,7 @@ const SearchableSelect = ({ value, onChange, options, placeholder }: { value: st
     );
 };
 
-export default function Index({ subscriptions, metrics, operatorServices, endpointConfigs }: PageProps) {
+export default function Index({ subscriptions, metrics, endpointConfigs }: PageProps) {
     const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     const [searchQuery, setSearchQuery] = useState(searchParams?.get('search') || '');
     const [idOperator, setIdOperator] = useState(searchParams?.get('id_operator') || '');
@@ -252,9 +245,9 @@ export default function Index({ subscriptions, metrics, operatorServices, endpoi
                                 setIdService('');
                             }}
                             placeholder="Operator"
-                            options={operatorServices ? operatorServices.map(op => ({
-                                value: op.id_operator,
-                                label: op.operator_name ? `${op.operator_name} (${op.id_operator})` : op.id_operator
+                            options={endpointConfigs ? endpointConfigs.map(op => ({
+                                value: String(op.operator),
+                                label: op.operator_name ? `${op.operator_name} (${op.operator})` : String(op.operator)
                             })) : []}
                         />
                         
@@ -263,9 +256,9 @@ export default function Index({ subscriptions, metrics, operatorServices, endpoi
                                 value={idService}
                                 onChange={setIdService}
                                 placeholder="Service"
-                                options={operatorServices?.find(op => op.id_operator === idOperator)?.services.map(svc => ({
-                                    value: svc.id_service,
-                                    label: svc.service_name ? `${svc.service_name} (${svc.id_service})` : svc.id_service
+                                options={endpointConfigs?.find(op => String(op.operator) === String(idOperator))?.services.map(svc => ({
+                                    value: String(svc.id_service),
+                                    label: svc.service_name ? `${svc.service_name} (${svc.id_service})` : String(svc.id_service)
                                 })) || []}
                             />
                         )}

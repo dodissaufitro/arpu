@@ -58,30 +58,6 @@ class ArpuSubscriptionController extends Controller
             ];
         });
 
-        $operatorServices = \Illuminate\Support\Facades\Cache::remember('arpu_operator_services', 86400, function () {
-            return ArpuSubscription::select('id_operator', 'operator', 'id_service', 'service')
-                ->whereNotNull('id_operator')
-                ->whereNotNull('id_service')
-                ->distinct()
-                ->get()
-                ->groupBy('id_operator')
-                ->map(function ($items) {
-                    $operatorName = $items->first()->operator;
-                    $services = $items->map(function ($item) {
-                        return [
-                            'id_service' => $item->id_service,
-                            'service_name' => $item->service,
-                        ];
-                    })->unique('id_service')->values()->toArray();
-
-                    return [
-                        'id_operator' => $items->first()->id_operator,
-                        'operator_name' => $operatorName,
-                        'services' => $services,
-                    ];
-                })->values()->toArray();
-        });
-
         $endpointConfigs = \Illuminate\Support\Facades\Cache::remember('arpu_endpoint_configs_list', 60, function () {
             return \App\Models\EndpointConfig::where('date_mode', 'yesterday')
                 ->select('operator', 'operator_name', 'id_service', 'service_name')
@@ -110,7 +86,6 @@ class ArpuSubscriptionController extends Controller
         return Inertia::render('arpu_subscriptions/index', [
             'subscriptions' => $subscriptions,
             'metrics' => $metrics,
-            'operatorServices' => $operatorServices,
             'endpointConfigs' => $endpointConfigs,
         ]);
     }
