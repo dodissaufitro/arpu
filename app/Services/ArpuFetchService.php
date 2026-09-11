@@ -220,14 +220,12 @@ class ArpuFetchService
                     if ($existingArpu) {
                         $updateData = [
                             'revenue' => (float)($existingArpu->revenue ?? 0) + $new_revenue,
+                            'attempt_charging' => (int)($existingArpu->attempt_charging ?? 0) + 1,
                         ];
 
-                        if ($hasRegDate) {
-                            // Saat data lama (update): tidak usah ditambah 1, pertahankan nilai yang sudah ada di database
-                        } else {
-                            // Jika tanggal reg tidak ada: samakan langsung dengan arpu_api_subscriptions
-                            $updateData['attempt_charging'] = (int)($record->attempt_charging ?? 0);
-                            $updateData['success_billing'] = (int)($record->success_billing ?? 0);
+                        // success_billing dihitung berapa kali berhasil di-charging (ada revenue)
+                        if ($new_revenue > 0) {
+                            $updateData['success_billing'] = (int)($existingArpu->success_billing ?? 0) + 1;
                         }
 
                         // Parse timestamp perbandingan untuk mendeteksi data tanggal mundur (backdate)
@@ -314,15 +312,10 @@ class ArpuFetchService
                             unset($arpuRecordData['operator_name']);
                         }
                         
-                        if ($hasRegDate) {
-                            // Jika ada tanggal reg: ikuti rumus sebelumnya
-                            $arpuRecordData['attempt_charging'] = 1;
-                            $arpuRecordData['success_billing'] = ($new_revenue != 0) ? 1 : 0;
-                        } else {
-                            // Jika tanggal reg tidak ada: samakan langsung dengan arpu_api_subscriptions
-                            $arpuRecordData['attempt_charging'] = (int)($record->attempt_charging ?? 0);
-                            $arpuRecordData['success_billing'] = (int)($record->success_billing ?? 0);
-                        }
+                        // attempt_charging: nomor ini tercatat dalam penagihan (1 kali)
+                        $arpuRecordData['attempt_charging'] = 1;
+                        // success_billing: dihitung berapa kali berhasil charging (1 jika revenue > 0, 0 jika gagal)
+                        $arpuRecordData['success_billing'] = ($new_revenue > 0) ? 1 : 0;
 
                         DB::table('arpu_subscriptions')->insert($arpuRecordData);
                         $totalInserted++;
