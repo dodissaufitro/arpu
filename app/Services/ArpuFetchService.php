@@ -81,7 +81,7 @@ class ArpuFetchService
         $baseUrl = env('ENDPOINT_API_SUBSCRIPTION', 'http://149.129.252.221/app/filetest/dataarpu/api_subscription.php');
 
         try {
-            $response = Http::timeout(90)->get($baseUrl, [
+            $response = Http::timeout(90)->retry(3, 1000)->get($baseUrl, [
                 'operator' => $operator,
                 'id_service' => $idService,
                 'date' => $date,
@@ -151,7 +151,13 @@ class ArpuFetchService
                         'message' => "Successfully downloaded {$totalInserted} records to staging.",
                     ];
                 }
-                return ['success' => false, 'message' => 'API response format is invalid.'];
+                
+                $bodyPreview = substr(trim($response->body()), 0, 120);
+                Log::warning("API response format invalid for Operator {$operator}, Service {$idService}, Date {$date}. Response: {$bodyPreview}");
+                return [
+                    'success' => false, 
+                    'message' => 'API response format is invalid' . ($bodyPreview ? ": '{$bodyPreview}'" : ' (Empty response)')
+                ];
             }
             return ['success' => false, 'message' => 'Failed to call API: HTTP ' . $response->status()];
         } catch (\Exception $e) {
