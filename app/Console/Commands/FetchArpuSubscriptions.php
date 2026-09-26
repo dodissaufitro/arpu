@@ -74,7 +74,9 @@ class FetchArpuSubscriptions extends Command
             return;
         }
 
-        $targetDateStr = $this->option('date') ?: Carbon::yesterday()->format('Y-m-d');
+        $targetDateStr = $this->option('date')
+            ? Carbon::parse($this->option('date'))->format('Y-m-d')
+            : Carbon::yesterday()->format('Y-m-d');
         $this->info("Target Date: {$targetDateStr}");
         if ($force) {
             $this->warn("Mode Force: Mengabaikan proteksi duplikasi log.");
