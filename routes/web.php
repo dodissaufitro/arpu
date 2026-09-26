@@ -12,7 +12,7 @@ Route::middleware('guest')->get('/', function () {
     ]);
 })->name('home');
 Route::middleware(['auth'])->group(function () {
-    Route::get('dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
+    Route::redirect('dashboard', 'arpu-subscriptions')->name('dashboard');
 
     Route::get('arpu-subscriptions', [\App\Http\Controllers\ArpuSubscriptionController::class, 'index'])->name('arpu_subscriptions.index')->middleware('permission:arpu.view');
     Route::post('arpu-subscriptions/sync', [\App\Http\Controllers\ArpuSubscriptionController::class, 'sync'])->name('arpu_subscriptions.sync')->middleware('permission:arpu.view');
@@ -41,6 +41,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('daily-push/all-ids', [\App\Http\Controllers\DailyPushController::class, 'getAllIds'])->name('daily_push.getAllIds');
         Route::post('daily-push/push-all', [\App\Http\Controllers\DailyPushController::class, 'pushAll'])->name('daily_push.pushAll');
         Route::post('daily-push/sync', [\App\Http\Controllers\DailyPushController::class, 'syncFromEndpointConfigs'])->name('daily_push.sync');
+        Route::post('daily-push/check-new-services', [\App\Http\Controllers\DailyPushController::class, 'checkNewServices'])->name('daily_push.check_new_services');
         Route::delete('daily-push/{dailyPush}', [\App\Http\Controllers\DailyPushController::class, 'destroy'])->name('daily_push.destroy');
         Route::post('daily-push/{dailyPush}/push', [\App\Http\Controllers\DailyPushController::class, 'push'])->name('daily_push.push');
     });
@@ -106,11 +107,6 @@ Route::middleware(['auth'])->group(function () {
         }
         return back()->with('error', 'Gagal mensinkronisasi data statistik.');
     })->name('statistics.sync');
-
-    Route::get('unit-hunian', [\App\Http\Controllers\UnitHunianController::class, 'index'])->name('unit-hunian.index');
-    Route::post('unit-hunian', [\App\Http\Controllers\UnitHunianController::class, 'store'])->name('unit-hunian.store');
-    Route::put('unit-hunian/{unitHunian}', [\App\Http\Controllers\UnitHunianController::class, 'update'])->name('unit-hunian.update');
-    Route::delete('unit-hunian/{unitHunian}', [\App\Http\Controllers\UnitHunianController::class, 'destroy'])->name('unit-hunian.destroy');
 
     // User & Role Management
     Route::resource('users', UserController::class)->except(['create', 'show', 'edit'])->middleware('permission:users.view');

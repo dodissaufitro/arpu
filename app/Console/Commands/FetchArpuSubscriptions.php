@@ -17,7 +17,7 @@ class FetchArpuSubscriptions extends Command
      *
      * @var string
      */
-    protected $signature = 'arpu:fetch {--operator= : Filter by Operator ID} {--service= : Filter by Service ID} {--date= : Specific date to fetch (Y-m-d)} {--force : Force fetch even if already synced}';
+    protected $signature = 'arpu:fetch {--operator= : Filter by Operator ID} {--service= : Filter by Service ID} {--date= : Specific date to fetch (Y-m-d)} {--force : Force fetch even if already synced} {--sync-services : Check and auto-register new services before fetching}';
 
     /**
      * The console command description.
@@ -31,13 +31,31 @@ class FetchArpuSubscriptions extends Command
      */
     public function handle(ArpuFetchService $arpuFetchService)
     {
-        $this->info('Fetching ARPU subscriptions from Endpoint Configs (Daily Push)...');
+        @ini_set('memory_limit', '2048M');
+        @set_time_limit(0);
 
         $operatorId = $this->option('operator');
         $serviceId = $this->option('service');
         $force = (bool) $this->option('force');
 
-        $query = EndpointConfig::where('date_mode', 'yesterday');
+        if ($this->option('sync-services')) {
+            $this->info('Checking and registering new services from API...');
+            $syncService = app(\App\Services\OperatorServiceSyncService::class);
+            $syncResult = $syncService->syncAllOperators($operatorId);
+            if ($syncResult['total_new_services'] > 0) {
+                $this->info("Found and registered {$syncResult['total_new_services']} new service(s).");
+            } else {
+                $this->info("All services are up-to-date.");
+            }
+            $this->newLine();
+        }
+
+        $this->info('Fetching ARPU subscriptions from Endpoint Configs (Daily Push)...');
+
+        $query = EndpointConfig::query();
+        if (! $this->option('date')) {
+            $query->where('date_mode', 'yesterday');
+        }
 
         if ($operatorId) {
             $query->where('operator', $operatorId);

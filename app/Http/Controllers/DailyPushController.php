@@ -168,6 +168,18 @@ class DailyPushController extends Controller
         return redirect()->back()->with('success', "Berhasil menyinkronkan {$syncedCount} konfigurasi baru dari Endpoint Configs ke Daily Push (H-1).");
     }
 
+    public function checkNewServices(Request $request, \App\Services\OperatorServiceSyncService $syncService)
+    {
+        $operator = $request->input('operator');
+        $result = $syncService->syncAllOperators($operator);
+
+        if ($result['total_new_services'] > 0) {
+            return redirect()->back()->with('success', "Pengecekan selesai! Ditemukan dan berhasil mendaftarkan {$result['total_new_services']} service baru ke Daily Push.");
+        }
+
+        return redirect()->back()->with('success', "Pengecekan selesai. Semua service untuk operator terdaftar sudah up-to-date (tidak ada service baru di API).");
+    }
+
     public function destroy(EndpointConfig $dailyPush)
     {
         $dailyPush->delete();

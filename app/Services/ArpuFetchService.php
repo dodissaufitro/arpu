@@ -63,6 +63,9 @@ class ArpuFetchService
      */
     public function downloadData($operator, $idService, $date, $force = false)
     {
+        @ini_set('memory_limit', '2048M');
+        @set_time_limit(0);
+
         if (!$force) {
             $existingLog = $this->isAlreadySynced($operator, $idService, $date);
             if ($existingLog) {
@@ -78,12 +81,11 @@ class ArpuFetchService
         $baseUrl = env('ENDPOINT_API_SUBSCRIPTION', 'http://149.129.252.221/app/filetest/dataarpu/api_subscription.php');
 
         try {
-            $response = Http::timeout(180)->get($baseUrl, [
+            $response = Http::timeout(90)->get($baseUrl, [
                 'operator' => $operator,
                 'id_service' => $idService,
                 'date' => $date,
             ]);
-
 
             if ($response->successful()) {
                 $data = $response->json();
@@ -91,6 +93,7 @@ class ArpuFetchService
                 if (isset($data['status']) && $data['status'] === 'success' && isset($data['data'])) {
                     $subscriptions = $data['data'];
                     $totalInserted = 0;
+                    $batch = [];
 
                     foreach ($subscriptions as $subscription) {
                         $recordData = [
@@ -106,7 +109,9 @@ class ArpuFetchService
                             'cycle' => $subscription['cycle'] ?? 'daily',
                             'adnet' => $subscription['adnet'] ?? null,
                             'revenue' => isset($subscription['revenue']) ? (float)$subscription['revenue'] : 0,
-                            'subs_date' => $subscription['subs_date'] ?? null,
+                            'subs_date' => (!empty($subscription['subs_date']) && $subscription['subs_date'] !== 'NA' && !str_starts_with((string)$subscription['subs_date'], '0000'))
+                                ? $subscription['subs_date']
+                                : null,
                             'renewal_date' => $subscription['renewal_date'] ?? null,
                             'freemium_end_date' => $subscription['freemium_end_date'] ?? null,
                             'unsubs_from' => $subscription['unsubs_from'] ?? 'sms',
@@ -124,9 +129,22 @@ class ArpuFetchService
                             'created_at' => isset($subscription['created_at']) ? Carbon::parse($subscription['created_at']) : Carbon::now(),
                         ];
 
-                        DB::table('arpu_api_subscriptions')->insert($recordData);
+                        $batch[] = $recordData;
                         $totalInserted++;
+
+                        if (count($batch) >= 1000) {
+                            DB::table('arpu_api_subscriptions')->insert($batch);
+                            $batch = [];
+                        }
                     }
+
+                    if (!empty($batch)) {
+                        DB::table('arpu_api_subscriptions')->insert($batch);
+                        $batch = [];
+                    }
+
+                    unset($subscriptions, $data);
+                    gc_collect_cycles();
 
                     return [
                         'success' => true,
@@ -147,6 +165,9 @@ class ArpuFetchService
      */
     public function processStagingData($operator = null, $idService = null, $date = null)
     {
+        @ini_set('memory_limit', '2048M');
+        @set_time_limit(0);
+
         try {
             $totalInserted = 0;
             $totalUpdated = 0;
@@ -163,7 +184,9 @@ class ArpuFetchService
             }
 
             DB::table('arpu_api_subscriptions')->orderBy('id')->chunkById(1000, function ($stagedRecords) use (&$totalInserted, &$totalUpdated) {
+                $idsToDeleteInChunk = [];
                 foreach ($stagedRecords as $record) {
+                    $idsToDeleteInChunk[] = $record->id;
                     $msisdn = $record->msisdn;
                     $id_operator = $record->id_operator;
                     $id_service = $record->id_service;
@@ -201,21 +224,26 @@ class ArpuFetchService
                         }
                     }
 
-                    // ATURAN: Jika MSISDN tidak ada subs_date-nya di arpu_subscriptions, abaikan saja (jangan dilanjutkan)
+                    // ATURAN: Jika subs_date dari data masuk kosong / null:
+                    $hasIncomingSubsDate = !empty($record->subs_date) && $record->subs_date !== 'NA' && !str_starts_with((string)$record->subs_date, '0000');
+
                     if ($existingArpu) {
+                        // Jika di arpu_subscriptions sudah ada tapi subs_date-nya kosong:
                         if (empty($existingArpu->subs_date) || $existingArpu->subs_date === 'NA' || str_starts_with((string)$existingArpu->subs_date, '0000')) {
-                            DB::table('arpu_api_subscriptions')->where('id', $record->id)->delete();
-                            continue;
+                            if ($hasIncomingSubsDate) {
+                                $existingArpu->subs_date = $record->subs_date;
+                            } else {
+                                // Data di database belum punya subs_date, dan data masuk juga null -> skip
+                                continue;
+                            }
                         }
                     } else {
-                        // Jika belum ada di arpu_subscriptions dan data masuk juga tidak ada subs_date: abaikan
-                        if (empty($record->subs_date) || $record->subs_date === 'NA' || str_starts_with((string)$record->subs_date, '0000')) {
-                            DB::table('arpu_api_subscriptions')->where('id', $record->id)->delete();
+                        // Jika di arpu_subscriptions belum ada data untuk MSISDN ini dan subs_date-nya null:
+                        // JANGAN SIMPAN, LANGSUNG DI-SKIP!
+                        if (!$hasIncomingSubsDate) {
                             continue;
                         }
                     }
-
-                    $hasRegDate = !empty($record->subs_date) && !str_starts_with($record->subs_date, '0000') && $record->subs_date !== 'NA';
 
                     if ($existingArpu) {
                         $updateData = [
@@ -320,7 +348,10 @@ class ArpuFetchService
                         DB::table('arpu_subscriptions')->insert($arpuRecordData);
                         $totalInserted++;
                     }
-                    DB::table('arpu_api_subscriptions')->where('id', $record->id)->delete();
+                }
+
+                if (!empty($idsToDeleteInChunk)) {
+                    DB::table('arpu_api_subscriptions')->whereIn('id', $idsToDeleteInChunk)->delete();
                 }
             });
             

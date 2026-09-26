@@ -21,21 +21,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <aside className="w-[280px] bg-white border-r border-slate-200 flex flex-col h-full flex-shrink-0 relative z-20">
                 {/* Logo Area */}
                 <div className="p-6 flex flex-col items-center justify-center border-b border-slate-100">
-                    <h1 className="text-2xl font-extrabold text-[#1a56db] tracking-tight">Linkit360</h1>
+                    <Link href="/arpu-subscriptions" className="text-2xl font-extrabold text-[#1a56db] tracking-tight hover:opacity-90 transition-opacity">
+                        Linkit360
+                    </Link>
                 </div>
 
                 {/* Navigation */}
                 <div className="flex-1 overflow-y-auto px-4 py-6 scrollbar-thin scrollbar-thumb-slate-200">
-                    <div className="mb-2">
-                        <Link href="/dashboard" className={`flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all group ${
-                            url.startsWith('/dashboard') 
-                                ? 'bg-[#1a56db] text-white shadow-md shadow-blue-500/20' 
-                                : 'text-slate-600 hover:text-[#1a56db] hover:bg-blue-50'
-                        }`}>
-                            <Home size={20} className={url.startsWith('/dashboard') ? 'text-white' : 'text-slate-400 group-hover:text-[#1a56db] transition-colors'} />
-                            <span>Dashboard</span>
-                        </Link>
-                    </div>
 
                     <div className="mt-8 mb-4">
                         <h3 className="text-xs font-bold text-slate-400 tracking-wider mb-3 px-2">MENU UTAMA</h3>

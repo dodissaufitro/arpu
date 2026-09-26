@@ -17,8 +17,8 @@ import AppLogoIcon from './app-logo-icon';
 
 const mainNavItems: NavItem[] = [
     {
-        title: 'Dashboard',
-        url: '/dashboard',
+        title: 'ARPU Subscriptions',
+        url: '/arpu-subscriptions',
         icon: LayoutGrid,
     },
 ];
@@ -94,7 +94,7 @@ export function AppHeader({ breadcrumbs = [] }: AppHeaderProps) {
                         </Sheet>
                     </div>
 
-                    <Link href="/dashboard" prefetch className="flex items-center space-x-2">
+                    <Link href="/arpu-subscriptions" prefetch className="flex items-center space-x-2">
                         <AppLogo />
                     </Link>
 

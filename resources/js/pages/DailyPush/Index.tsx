@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import DashboardLayout from '@/layouts/DashboardLayout';
 import { Head, useForm, usePage, router, Link } from '@inertiajs/react';
-import { Play, Plus, Trash2, Calendar, Database, Hash, CheckCircle, XCircle, Clock, FastForward, Settings, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, Plus, Trash2, Calendar, Database, Hash, CheckCircle, XCircle, Clock, FastForward, Settings, RefreshCw, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import dayjs from 'dayjs';
 import axios from 'axios';
 
 interface EndpointConfig {
     id: number;
-    operator: number;
+    operator: number | string;
     operator_name: string | null;
-    id_service: number;
+    id_service: number | string;
     service_name: string | null;
     date_mode: string;
+    target_date?: string | null;
     last_run_at: string | null;
     status: string | null;
 }
@@ -28,7 +29,7 @@ interface PaginatedData<T> {
 
 export default function Index({ configs, filters, operatorServices }: { configs: PaginatedData<EndpointConfig>, filters: any, operatorServices: Record<string, string[]> }) {
     const { flash } = usePage().props as any;
-    const [isSubmitting, setIsSubmitting] = useState<number | 'all' | 'sync' | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState<number | 'all' | 'sync' | 'check-services' | null>(null);
     const [pushProgress, setPushProgress] = useState<{ current: number; total: number } | null>(null);
     const [editModeId, setEditModeId] = useState<number | null>(null);
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, config: EndpointConfig | null } | null>(null);
@@ -164,6 +165,15 @@ export default function Index({ configs, filters, operatorServices }: { configs:
         }
     };
 
+    const handleCheckNewServices = () => {
+        if (confirm('Lakukan pengecekan service baru dari API untuk seluruh operator terdaftar? Service baru akan otomatis didaftarkan ke Daily Push.')) {
+            setIsSubmitting('check-services');
+            router.post(`/daily-push/check-new-services`, {}, {
+                onFinish: () => setIsSubmitting(null),
+            });
+        }
+    };
+
     const handleDelete = (id: number) => {
         if (confirm('Are you sure you want to delete this configuration?')) {
             router.delete(`/daily-push/${id}`);
@@ -181,6 +191,19 @@ export default function Index({ configs, filters, operatorServices }: { configs:
                         <p className="text-sm text-slate-500 mt-1">Manage and execute daily data synchronization (Target Date is automatically set to Yesterday)</p>
                     </div>
                     <div className="flex gap-3">
+                        <button
+                            onClick={handleCheckNewServices}
+                            disabled={isSubmitting === 'check-services'}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 transition-colors shadow-sm disabled:opacity-50"
+                            title="Pengecekan service baru dari API untuk seluruh operator terdaftar"
+                        >
+                            {isSubmitting === 'check-services' ? (
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                                <Sparkles size={20} />
+                            )}
+                            Cek Service Baru (API)
+                        </button>
                         <button
                             onClick={handleSyncFromEndpointConfigs}
                             disabled={isSubmitting === 'sync'}

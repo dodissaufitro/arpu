@@ -128,12 +128,12 @@ class EndpointConfigController extends Controller
                     EndpointConfig::updateOrCreate(
                         [
                             'operator' => $item['operator'],
-                            'id_service' => $item['id_service']
+                            'id_service' => $item['id_service'],
+                            'date_mode' => 'fixed',
                         ],
                         [
                             'operator_name' => $item['operator_rule'],
                             'service_name' => $item['keyword'],
-                            'date_mode' => 'yesterday',
                             'target_date' => null,
                         ]
                     );

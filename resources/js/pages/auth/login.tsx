@@ -70,7 +70,7 @@ export default function Login({ status, canResetPassword }: { status?: string, c
                 <div className="w-full md:w-[55%] flex flex-col justify-center px-8 py-12 md:px-16 md:py-16 bg-white relative z-20">
                     <div className="mb-10 text-center">
                         <h2 className="text-[1.75rem] font-bold text-[#1e40af] mb-2">Selamat Datang!</h2>
-                        <p className="text-slate-500 text-sm">Silakan masuk untuk melanjutkan ke dashboard</p>
+                        <p className="text-slate-500 text-sm">Silakan masuk untuk melanjutkan ke aplikasi</p>
                     </div>
 
                     {status && <div className="mb-4 font-medium text-sm text-green-600 text-center">{status}</div>}
