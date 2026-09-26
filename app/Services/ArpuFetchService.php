@@ -80,89 +80,195 @@ class ArpuFetchService
 
         $baseUrl = env('ENDPOINT_API_SUBSCRIPTION', 'http://149.129.252.221/app/filetest/dataarpu/api_subscription.php');
 
+        $tempDir = storage_path('app/temp');
+        if (!is_dir($tempDir)) {
+            @mkdir($tempDir, 0777, true);
+        }
+        $tempFilePath = $tempDir . "/temp_arpu_{$operator}_{$idService}_{$date}_" . uniqid() . ".json";
+
         try {
-            $response = Http::timeout(300)->retry(3, 1000)->get($baseUrl, [
+            // Stream response langsung ke file sementara di disk untuk mencegah memori melonjak (OOM 137)
+            $response = Http::sink($tempFilePath)->timeout(300)->retry(3, 1000)->get($baseUrl, [
                 'operator' => $operator,
                 'id_service' => $idService,
                 'date' => $date,
             ]);
 
-            if ($response->successful()) {
-                $data = $response->json();
-                unset($response);
+            if (!$response->successful() || !file_exists($tempFilePath)) {
+                if (file_exists($tempFilePath)) @unlink($tempFilePath);
+                return ['success' => false, 'message' => 'Failed to call API: HTTP ' . $response->status()];
+            }
 
-                if (isset($data['status']) && $data['status'] === 'success' && isset($data['data'])) {
-                    $subscriptions = $data['data'];
-                    unset($data);
-                    $totalInserted = 0;
-                    $batch = [];
+            $fileSize = filesize($tempFilePath);
+            if ($fileSize === 0) {
+                @unlink($tempFilePath);
+                return ['success' => false, 'message' => 'API response is empty'];
+            }
 
-                    foreach ($subscriptions as $subscription) {
-                        $recordData = [
-                            'country' => $subscription['country'] ?? null,
-                            'operator_name' => $subscription['operator_name'] ?? null,
-                            'id_operator' => $subscription['id_operator'] ?? null,
-                            'id_service' => $subscription['id_service'] ?? null,
-                            'service' => $subscription['service'] ?? null,
-                            'keyword' => $subscription['keyword'] ?? 'NA',
-                            'source' => $subscription['source'] ?? 'NA',
-                            'msisdn' => $subscription['msisdn'] ?? null,
-                            'status' => $subscription['status'] ?? null,
-                            'cycle' => $subscription['cycle'] ?? 'daily',
-                            'adnet' => $subscription['adnet'] ?? null,
-                            'revenue' => isset($subscription['revenue']) ? (float)$subscription['revenue'] : 0,
-                            'subs_date' => (!empty($subscription['subs_date']) && $subscription['subs_date'] !== 'NA' && !str_starts_with((string)$subscription['subs_date'], '0000'))
-                                ? $subscription['subs_date']
-                                : null,
-                            'renewal_date' => $subscription['renewal_date'] ?? null,
-                            'freemium_end_date' => $subscription['freemium_end_date'] ?? null,
-                            'unsubs_from' => $subscription['unsubs_from'] ?? 'sms',
-                            'unsubs_date' => $subscription['unsubs_date'] ?? null,
-                            'service_price' => isset($subscription['service_price']) ? (float)$subscription['service_price'] : null,
-                            'currency' => $subscription['currency'] ?? 'NA',
-                            'profile_status' => $subscription['profile_status'] ?? 'NA',
-                            'publisher' => $subscription['publisher'] ?? 'NA',
-                            'trxid' => $subscription['trxid'] ?? 'NA',
-                            'pixel' => $subscription['pixel'] ?? 'NA',
-                            'handset' => $subscription['handset'] ?? 'NA',
-                            'browser' => $subscription['browser'] ?? 'NA',
-                            'attempt_charging' => $subscription['attempt_charging'] ?? 0,
-                            'success_billing' => $subscription['success_billing'] ?? 0,
-                            'created_at' => isset($subscription['created_at']) ? Carbon::parse($subscription['created_at']) : Carbon::now(),
-                        ];
+            // Cek respon error atau format invalid dari preview awal file
+            $handle = fopen($tempFilePath, 'r');
+            if (!$handle) {
+                @unlink($tempFilePath);
+                return ['success' => false, 'message' => 'Cannot open downloaded temporary file'];
+            }
 
-                        $batch[] = $recordData;
-                        $totalInserted++;
+            $preview = fread($handle, min(4096, $fileSize));
+            rewind($handle);
 
-                        if (count($batch) >= 1000) {
-                            DB::table('arpu_api_subscriptions')->insert($batch);
-                            $batch = [];
-                        }
-                    }
+            // Jika respon mengindikasikan status error dari database rekanan
+            if (str_contains($preview, '"status":"error"')) {
+                fclose($handle);
+                $errContent = file_get_contents($tempFilePath);
+                @unlink($tempFilePath);
+                $errJson = json_decode($errContent, true);
+                $errMsg = $errJson['message'] ?? 'API returned error status';
+                return ['success' => false, 'message' => $errMsg];
+            }
 
-                    if (!empty($batch)) {
-                        DB::table('arpu_api_subscriptions')->insert($batch);
-                        $batch = [];
-                    }
-
-                    unset($subscriptions, $data);
-                    gc_collect_cycles();
-
-                    return [
-                        'success' => true,
-                        'message' => "Successfully downloaded {$totalInserted} records to staging.",
-                    ];
-                }
-                
-                $bodyPreview = substr(trim($response->body()), 0, 120);
+            if (!str_contains($preview, '"status":"success"')) {
+                fclose($handle);
+                @unlink($tempFilePath);
+                $bodyPreview = substr(trim($preview), 0, 120);
                 Log::warning("API response format invalid for Operator {$operator}, Service {$idService}, Date {$date}. Response: {$bodyPreview}");
                 return [
-                    'success' => false, 
+                    'success' => false,
                     'message' => 'API response format is invalid' . ($bodyPreview ? ": '{$bodyPreview}'" : ' (Empty response)')
                 ];
             }
-            return ['success' => false, 'message' => 'Failed to call API: HTTP ' . $response->status()];
+
+            // Parse streaming per objek JSON dari file disk ke database secara berkala (batch 1000)
+            $totalInserted = 0;
+            $batch = [];
+            $inData = false;
+            $depth = 0;
+            $currentObj = '';
+            $buffer = '';
+            $inString = false;
+            $escaped = false;
+
+            while (!feof($handle)) {
+                $chunk = fread($handle, 65536);
+                $len = strlen($chunk);
+
+                for ($i = 0; $i < $len; $i++) {
+                    $char = $chunk[$i];
+
+                    if (!$inData) {
+                        $buffer .= $char;
+                        if (str_ends_with($buffer, '"data":[')) {
+                            $inData = true;
+                            $buffer = '';
+                        }
+                        continue;
+                    }
+
+                    if ($inString) {
+                        $currentObj .= $char;
+                        if ($char === '\\' && !$escaped) {
+                            $escaped = true;
+                        } else {
+                            if ($char === '"' && !$escaped) {
+                                $inString = false;
+                            }
+                            $escaped = false;
+                        }
+                        continue;
+                    }
+
+                    if ($char === '"') {
+                        $inString = true;
+                        if ($depth > 0) {
+                            $currentObj .= $char;
+                        }
+                        continue;
+                    }
+
+                    if ($char === '{') {
+                        if ($depth === 0) {
+                            $currentObj = '{';
+                        } else {
+                            $currentObj .= '{';
+                        }
+                        $depth++;
+                    } elseif ($char === '}') {
+                        $depth--;
+                        $currentObj .= '}';
+                        if ($depth === 0) {
+                            $subscription = json_decode($currentObj, true);
+                            $currentObj = '';
+
+                            if ($subscription) {
+                                $recordData = [
+                                    'country' => $subscription['country'] ?? null,
+                                    'operator_name' => $subscription['operator_name'] ?? null,
+                                    'id_operator' => $subscription['id_operator'] ?? null,
+                                    'id_service' => $subscription['id_service'] ?? null,
+                                    'service' => $subscription['service'] ?? null,
+                                    'keyword' => $subscription['keyword'] ?? 'NA',
+                                    'source' => $subscription['source'] ?? 'NA',
+                                    'msisdn' => $subscription['msisdn'] ?? null,
+                                    'status' => $subscription['status'] ?? null,
+                                    'cycle' => $subscription['cycle'] ?? 'daily',
+                                    'adnet' => $subscription['adnet'] ?? null,
+                                    'revenue' => isset($subscription['revenue']) ? (float)$subscription['revenue'] : 0,
+                                    'subs_date' => (!empty($subscription['subs_date']) && $subscription['subs_date'] !== 'NA' && !str_starts_with((string)$subscription['subs_date'], '0000'))
+                                        ? $subscription['subs_date']
+                                        : null,
+                                    'renewal_date' => $subscription['renewal_date'] ?? null,
+                                    'freemium_end_date' => $subscription['freemium_end_date'] ?? null,
+                                    'unsubs_from' => $subscription['unsubs_from'] ?? 'sms',
+                                    'unsubs_date' => $subscription['unsubs_date'] ?? null,
+                                    'service_price' => isset($subscription['service_price']) ? (float)$subscription['service_price'] : null,
+                                    'currency' => $subscription['currency'] ?? 'NA',
+                                    'profile_status' => $subscription['profile_status'] ?? 'NA',
+                                    'publisher' => $subscription['publisher'] ?? 'NA',
+                                    'trxid' => $subscription['trxid'] ?? 'NA',
+                                    'pixel' => $subscription['pixel'] ?? 'NA',
+                                    'handset' => $subscription['handset'] ?? 'NA',
+                                    'browser' => $subscription['browser'] ?? 'NA',
+                                    'attempt_charging' => $subscription['attempt_charging'] ?? 0,
+                                    'success_billing' => $subscription['success_billing'] ?? 0,
+                                    'created_at' => isset($subscription['created_at']) ? Carbon::parse($subscription['created_at']) : Carbon::now(),
+                                ];
+
+                                $batch[] = $recordData;
+                                $totalInserted++;
+
+                                if (count($batch) >= 1000) {
+                                    DB::table('arpu_api_subscriptions')->insert($batch);
+                                    $batch = [];
+                                }
+                            }
+                        }
+                    } elseif ($depth > 0) {
+                        $currentObj .= $char;
+                    } elseif ($char === ']') {
+                        break 2;
+                    }
+                }
+            }
+
+            fclose($handle);
+
+            if (!empty($batch)) {
+                DB::table('arpu_api_subscriptions')->insert($batch);
+                $batch = [];
+            }
+
+            if (file_exists($tempFilePath)) {
+                @unlink($tempFilePath);
+            }
+
+            gc_collect_cycles();
+
+            return [
+                'success' => true,
+                'message' => "Successfully downloaded {$totalInserted} records to staging.",
+            ];
         } catch (\Exception $e) {
+            if (file_exists($tempFilePath)) {
+                @unlink($tempFilePath);
+            }
             Log::error('ArpuFetchService Download Error: ' . $e->getMessage());
             return ['success' => false, 'message' => $e->getMessage()];
         }
