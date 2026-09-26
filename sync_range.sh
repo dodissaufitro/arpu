@@ -24,8 +24,9 @@ echo "=================================================================="
 echo ""
 
 # Loop berurutan dari tanggal START_DAY sampai END_DAY
-for day in $(seq -w $START_DAY $END_DAY); do
-    DATE="${YEAR_MONTH}-${day}"
+for (( day=10#$START_DAY; day<=10#$END_DAY; day++ )); do
+    DAY_PADDED=$(printf "%02d" $day)
+    DATE="${YEAR_MONTH}-${DAY_PADDED}"
     echo "------------------------------------------------------------------"
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Menjalankan fetch untuk tanggal: $DATE"
     echo "------------------------------------------------------------------"
