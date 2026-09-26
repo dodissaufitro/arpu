@@ -31,7 +31,8 @@ class FetchArpuSubscriptions extends Command
      */
     public function handle(ArpuFetchService $arpuFetchService)
     {
-        @ini_set('memory_limit', '2048M');
+        DB::disableQueryLog();
+        @ini_set('memory_limit', '1024M');
         @set_time_limit(0);
 
         $operatorId = $this->option('operator');
@@ -116,7 +117,8 @@ class FetchArpuSubscriptions extends Command
                 ]);
             }
 
-            // Jeda 1 detik agar tidak membebani API
+            // Bersihkan memori dan beri jeda 1 detik agar tidak membebani server/API
+            gc_collect_cycles();
             sleep(1);
         });
 

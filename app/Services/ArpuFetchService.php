@@ -89,9 +89,11 @@ class ArpuFetchService
 
             if ($response->successful()) {
                 $data = $response->json();
+                unset($response);
 
                 if (isset($data['status']) && $data['status'] === 'success' && isset($data['data'])) {
                     $subscriptions = $data['data'];
+                    unset($data);
                     $totalInserted = 0;
                     $batch = [];
 
@@ -171,7 +173,8 @@ class ArpuFetchService
      */
     public function processStagingData($operator = null, $idService = null, $date = null)
     {
-        @ini_set('memory_limit', '2048M');
+        DB::disableQueryLog();
+        @ini_set('memory_limit', '1024M');
         @set_time_limit(0);
 
         try {
@@ -359,6 +362,9 @@ class ArpuFetchService
                 if (!empty($idsToDeleteInChunk)) {
                     DB::table('arpu_api_subscriptions')->whereIn('id', $idsToDeleteInChunk)->delete();
                 }
+
+                unset($idsToDeleteInChunk);
+                gc_collect_cycles();
             });
             
             if ($totalInserted > 0 || $totalUpdated > 0) {
