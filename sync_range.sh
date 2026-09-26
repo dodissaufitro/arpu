@@ -34,10 +34,10 @@ for (( day=10#$START_DAY; day<=10#$END_DAY; day++ )); do
     # Deteksi apakah berjalan di lingkungan Docker atau Native PHP
     if command -v docker >/dev/null 2>&1 && docker ps -q 2>/dev/null | grep -q "$CONTAINER_ID"; then
         echo "Eksekusi via Docker Container: $CONTAINER_ID"
-        docker exec "$CONTAINER_ID" php -d memory_limit=2048M /app/artisan arpu:fetch --operator="$OPERATOR" --date="$DATE" --force
+        docker exec "$CONTAINER_ID" php -d memory_limit=1024M /app/artisan arpu:fetch --operator="$OPERATOR" --date="$DATE" --force
     else
         echo "Eksekusi via PHP Lokal / Host"
-        php -d memory_limit=2048M artisan arpu:fetch --operator="$OPERATOR" --date="$DATE" --force
+        php -d memory_limit=1024M artisan arpu:fetch --operator="$OPERATOR" --date="$DATE" --force
     fi
 
     EXIT_CODE=$?
