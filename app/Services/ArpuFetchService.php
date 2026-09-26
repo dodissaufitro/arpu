@@ -81,7 +81,7 @@ class ArpuFetchService
         $baseUrl = env('ENDPOINT_API_SUBSCRIPTION', 'http://149.129.252.221/app/filetest/dataarpu/api_subscription.php');
 
         try {
-            $response = Http::timeout(60)->retry(3, 1000)->get($baseUrl, [
+            $response = Http::timeout(300)->retry(3, 1000)->get($baseUrl, [
                 'operator' => $operator,
                 'id_service' => $idService,
                 'date' => $date,
